@@ -37,10 +37,12 @@ var Cell = function(row, col, type, primarySelection, secondarySelection) {
 
 var Matrix = function(width, height, canvas, autoResize) {
     this.board = [];
-    for (var row = 0; row < height; row++) {
+    this.width = width;
+    this.height = height;
+    for (var row = 0; row < this.height; row++) {
         var line = [];
         this.board.push(line);
-        for (var col = 0; col < width; col++) {
+        for (var col = 0; col < this.width; col++) {
             line.push(new Cell(row, col, 1));
         }
     }
@@ -48,9 +50,9 @@ var Matrix = function(width, height, canvas, autoResize) {
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
 
-    this.fillStyles = {1: '#459990', 2: '#CC3333', 3: '#33DD33'};
+    this.fillStyles = {0: 'none', 1: '#459990', 2: '#CC3333', 3: '#33DD33'};
     this.borderStyles = {'default': '#CCC'};
-    this.selectionStyle = {1: 'rgba(220, 220, 220, 0.2)', 2: 'rgb(220, 220, 220)'};
+    this.selectionStyle = {1: 'rgba(220, 220, 220)', 2: 'rgb(220, 220, 220, 0.2)'};
 
     if (autoResize === undefined || autoResize) {
         this.resize();
@@ -86,6 +88,8 @@ Matrix.prototype.updateDimensions = function() {
 }
 
 Matrix.prototype.render = function () {
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
     for (var col = 0; col < this.width; col++) {
         var x = this.canvas.width/2 + (col-this.width/2)*this.cellSpace;
 
@@ -93,7 +97,7 @@ Matrix.prototype.render = function () {
             var y = this.canvasPadding + row * this.cellSpace;
 
             var cell = this.board[row][col];
-            if (cell === null || !cell.type) {
+            if (cell.type === 0) {
                 continue;
             }
 
@@ -131,14 +135,23 @@ Matrix.prototype.render = function () {
     }
 }
 
-var i = 1;
-setInterval(function() {
-    i++
-    new Matrix(i, i).render();
-}, 1000);
+Matrix.prototype.forEach = function(fn) {
+    for (var row = 0; row < this.height; row++) {
+        for (var col = 0; col < this.width; col++) {
+            fn(this.board[row][col]);
+        }
+    }
+}
 
-//var r = new Matrix(5, 5);
-//r.render();
+var m = new Matrix(5, 5);
+
+setInterval(function() {
+    m.forEach(function(cell) {
+        cell.type = (Math.random()*4)|0;
+    });
+    m.render();    
+}, 500);
+
         </script>
     </body>
 </html>
