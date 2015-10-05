@@ -41,14 +41,14 @@ var Matrix = function(width, height, canvas, autoResize) {
         var line = [];
         this.board.push(line);
         for (var col = 0; col < width; col++) {
-            line.push(new Cell(row, col));
+            line.push(new Cell(row, col, 1));
         }
     }
 
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
 
-    this.fillStyles = {0: '#CC3333', 1: '#33DD33', 'default': '#459990'};
+    this.fillStyles = {1: '#459990', 2: '#CC3333', 3: '#33DD33'};
     this.borderStyles = {'default': '#CCC'};
     this.selectionStyle = {1: 'rgba(220, 220, 220, 0.2)', 2: 'rgb(220, 220, 220)'};
 
@@ -93,14 +93,14 @@ Matrix.prototype.render = function () {
             var y = this.canvasPadding + row * this.cellSpace;
 
             var cell = this.board[row][col];
-            if (cell === null) {
+            if (cell === null || !cell.type) {
                 continue;
             }
 
-            var fillStyle = this.fillStyles[cell.type] || this.fillStyles['default'];
+            var fillStyle = this.fillStyles[cell.type];
             var borderStyle = this.borderStyles[cell.type] || this.borderStyles['default'];
-            var primarySelectionStyle = this.selectionStyle[cell.primarySelection] || this.selectionStyle['default'];
-            var secondarySelectionStyle = this.selectionStyle[cell.secondarySelection] || this.selectionStyle['default'];
+            var primarySelectionStyle = this.selectionStyle[cell.primarySelection];
+            var secondarySelectionStyle = this.selectionStyle[cell.secondarySelection];
 
             this.context.fillStyle = fillStyle;
             this.context.fillRect(x + this.cellPadding, y,
