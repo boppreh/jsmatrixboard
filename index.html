@@ -63,41 +63,25 @@ var Matrix = function(width, height, canvas, autoResize) {
         };
     }
 
-    this.canvas.onmousemove = function(e) {
-        if (self.onmousemove) {
-            e.col = self.xToCol(e.x);
-            e.row = self.yToRow(e.y);
-            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
-            self.onmousemove(e);
-        }
-    };
-    this.canvas.onmousedown = function(e) {
-        if (self.onmousedown) {
-            e.col = self.xToCol(e.x);
-            e.row = self.yToRow(e.y);
-            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
-            self.onmousedown(e);
-        }
-    };
-    this.canvas.onmouseup = function(e) {
-        if (self.onmouseup) {
-            e.col = self.xToCol(e.x);
-            e.row = self.yToRow(e.y);
-            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
-            self.onmouseup(e);
-        }
-    };
-    this.canvas.onclick = function(e) {
-        if (self.onclick) {
-            e.col = self.xToCol(e.x);
-            e.row = self.yToRow(e.y);
-            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
-            self.onclick(e);
-        }
-    };
+    this.translateEventListener('onmousemove');
+    this.translateEventListener('onmousedown');
+    this.translateEventListener('onmouseup');
+    this.translateEventListener('onclick');
 
     this.updateDimensions();
 };
+
+Matrix.prototype.translateEventListener = function(eventName) {
+    var self = this;
+    this.canvas[eventName] = function(e) {
+        if (self[eventName]) {
+            e.col = self.xToCol(e.x);
+            e.row = self.yToRow(e.y);
+            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
+            self[eventName](e);
+        }
+    };
+}
 
 Matrix.prototype.isValid = function(row, col) {
     return row >= 0 && row < this.height && col >= 0 && col < this.height;
