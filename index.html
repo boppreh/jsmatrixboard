@@ -53,9 +53,9 @@ var Matrix = function(width, height, canvas, autoResize) {
     this.fillStyles = {0: 'none', 1: '#459990', 2: '#CC3333', 3: '#33DD33'};
     this.selectionStyle = {1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
 
+    var self = this;
     if (autoResize === undefined || autoResize) {
         this.resize();
-        var self = this;
         window.onresize = function() {
             self.resize();
             self.updateDimensions();
@@ -63,13 +63,58 @@ var Matrix = function(width, height, canvas, autoResize) {
         };
     }
 
+    this.canvas.onmousemove = function(e) {
+        if (self.onmousemove) {
+            e.col = self.xToCol(e.x);
+            e.row = self.yToRow(e.y);
+            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
+            self.onmousemove(e);
+        }
+    };
+    this.canvas.onmousedown = function(e) {
+        if (self.onmousedown) {
+            e.col = self.xToCol(e.x);
+            e.row = self.yToRow(e.y);
+            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
+            self.onmousedown(e);
+        }
+    };
+    this.canvas.onmouseup = function(e) {
+        if (self.onmouseup) {
+            e.col = self.xToCol(e.x);
+            e.row = self.yToRow(e.y);
+            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
+            self.onmouseup(e);
+        }
+    };
+    this.canvas.onclick = function(e) {
+        if (self.onclick) {
+            e.col = self.xToCol(e.x);
+            e.row = self.yToRow(e.y);
+            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
+            self.onclick(e);
+        }
+    };
+
     this.updateDimensions();
-}
+};
+
+Matrix.prototype.isValid = function(row, col) {
+    return row >= 0 && row < this.height && col >= 0 && col < this.height;
+};
+
+Matrix.prototype.xToCol = function(x) {
+    return Math.round((x - this.canvas.width/2) / this.cellSpace + this.width/2 - 0.5);
+};
+
+Matrix.prototype.yToRow = function(y) {
+    return Math.round((y - this.canvasPadding) / this.cellSpace - 0.5);
+};
 
 Matrix.prototype.resize = function() {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
-}
+};
 
 Matrix.prototype.updateDimensions = function() {
     this.width = this.board[0].length;
@@ -84,7 +129,7 @@ Matrix.prototype.updateDimensions = function() {
     }
     this.cellBorder = this.cellSpace / 5;
     this.cellSize = this.cellSpace - this.cellPadding * 2;
-}
+};
 
 Matrix.prototype.render = function () {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -130,7 +175,7 @@ Matrix.prototype.render = function () {
             }
         }
     }
-}
+};
 
 Matrix.prototype.forEach = function(fn) {
     for (var row = 0; row < this.height; row++) {
@@ -138,18 +183,14 @@ Matrix.prototype.forEach = function(fn) {
             fn(this.board[row][col]);
         }
     }
-}
+};
 
 var m = new Matrix(5, 5);
-
-setInterval(function() {
-    m.forEach(function(cell) {
-        cell.type = (Math.random()*4)|0;
-        cell.primarySelection = (Math.random()*3)|0;
-        cell.secondarySelection = (Math.random()*3)|0;
-    });
-    m.render();    
-}, 500);
+m.render();
+m.onclick = function(e) {
+    e.cell.primarySelection = 1;
+    m.render();
+}
 
         </script>
     </body>
