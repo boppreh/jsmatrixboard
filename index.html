@@ -27,21 +27,24 @@
         <script>
 "use strict";
 
-var Renderer = function(canvas) {
+var Renderer = function(canvas, pixelWidth, pixelHeight) {
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
+    this.resize(pixelWidth, pixelHeight);
 
     this.fillStyles = {0: '#CC3333', 1: '#33DD33', 'default': '#459990'};
     this.borderStyles = {'default': '#CCC'};
     this.selectionStyle = {1: 'rgba(220, 220, 220, 0.2)', 2: 'rgb(220, 220, 220)'};
 }
 
+Renderer.prototype.resize = function(width, height) {
+    this.canvas.width = width || window.innerWidth;
+    this.canvas.height = height || window.innerHeight;
+}
+
 Renderer.prototype.render = function (board) {
     var width = board[0].length;
     var height = board.length;
-
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
 
     var canvasPadding = this.canvas.height / 20;
     var cellSpace = Math.min((this.canvas.width - canvasPadding) / (width + 1), (this.canvas.height - canvasPadding) / (height + 1));
@@ -110,7 +113,7 @@ for (var i = 0; i <= m2; i++) {
     var line = [];
     board.push(line);
     for (var j = 0; j <= m2; j++) {
-        line.push(new Cell(i == j, 2, 1));
+        line.push(new Cell((Math.random() * 3)|0, (Math.random() * 3)|0, (Math.random() * 3)|0));
     }
 }
 var r = new Renderer();
