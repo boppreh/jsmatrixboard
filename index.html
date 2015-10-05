@@ -32,13 +32,17 @@ var context = canvas.getContext('2d');
 
 var fillStyles = {0: '#CC3333', 1: '#33DD33', 'default': '#459990'};
 var borderStyles = {'default': '#CCC'};
+var selectionStyle = {1: 'rgba(220, 220, 220, 0.2)', 2: 'rgb(220, 220, 220)'};
 
 var Cell = function(type, primarySelection, secondarySelection) {
     this.type = type;
+    this.primarySelection = primarySelection;
+    this.secondarySelection = secondarySelection;
+
     this.fillStyle = fillStyles[this.type] || fillStyles['default'];
     this.borderStyle = borderStyles[this.type] || borderStyles['default'];
-    this.primarySelection = Boolean(primarySelection);
-    this.secondarySelection = Boolean(secondarySelection);
+    this.primarySelectionStyle = selectionStyle[this.primarySelection] || selectionStyle['default'];
+    this.secondarySelectionStyle = selectionStyle[this.secondarySelection] || selectionStyle['default'];
 }
 
 function render(board) {
@@ -79,8 +83,7 @@ function render(board) {
             }
 
             if (cell.primarySelection) {
-                context.fillStyle = '#EEE';
-                //context.globalAlpha = cell ? 1 : 0.2;
+                context.fillStyle = cell.primarySelectionStyle;
                 context.beginPath();
                 context.moveTo(x+cellBorder+cellPadding, y+cellBorder);
                 context.lineTo(x+cellSize-cellBorder+cellPadding, y+cellBorder);
@@ -88,8 +91,7 @@ function render(board) {
                 context.fill();
             }
             if (cell.secondarySelection) {
-                context.fillStyle = '#EEE';
-                //context.globalAlpha = isSrcActive(row, col) ? 0.9 : 0.1;
+                context.fillStyle = cell.secondarySelectionStyle;
                 context.beginPath();
                 context.moveTo(x+cellPadding+cellSize-cellBorder, y+cellSize-cellBorder);
                 context.lineTo(x+cellPadding+cellSize-cellBorder, y+cellBorder);
@@ -106,7 +108,7 @@ for (var i = 0; i <= m2; i++) {
     var line = [];
     board.push(line);
     for (var j = 0; j <= m2; j++) {
-        line.push(new Cell(i == j, Math.random() > 0.9, Math.random() > 0.9));
+        line.push(new Cell(i == j, 2, 1));
     }
 }
 render(board);
