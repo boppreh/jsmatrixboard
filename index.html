@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width" />
+        <title>Matrix Board Test</title>
+        <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font: 16px sans-serif;
+            color: #CCC;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            background-color: #456990;
+        }
+        </style>
+    </head>
+    <body>
+        <canvas></canvas>
+        <script>
+"use strict";
+
+var canvas = document.getElementsByTagName('canvas')[0]
+var context = canvas.getContext('2d');
+
+var width = 20;
+var height = 30;
+
+function cellY(row) { return  }
+function cellX(col) { return  }
+function rowY(y) { return Math.round((y - canvasPadding) / cellSpace - 0.5); }
+function colX(x) { return Math.round((x - canvas.width/2) / cellSpace + (width+1)/2 - 0.5); }
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+var canvasPadding = canvas.height / 20;
+var cellSpace = (Math.min(canvas.width, canvas.height) - 2 * canvasPadding) / (Math.max(width, height)+1);
+var cellPadding = cellSpace / 20;
+var cellBorder = (cellSpace / 5)|0;
+var cellSize = cellSpace - cellPadding * 2;
+for (var col = 0; col < width; col++) {
+    var x = canvas.width/2 + (col-(width+1)/2)*cellSpace;
+
+    for (var row = 0; row < height; row++) {
+        var y = canvasPadding + row * cellSpace;
+
+        var correct = Math.random() > 0.9;
+        var cell = Math.random() > 0.8;
+        if (!correct && !cell) {
+            continue;
+        }
+        if (correct) {
+            context.fillStyle = cell ? '#33DD33' : '#459990';
+        } else if (cell) {
+            context.fillStyle = '#CC3333';
+        }
+        context.fillRect(x + cellPadding, y,
+                         cellSize, cellSize);
+        if (cellSpace > 10) {
+            context.strokeStyle = '#CCC';
+            context.strokeRect(x + cellPadding, y,
+                               cellSize, cellSize);
+        }
+    }
+}
+        </script>
+    </body>
+</html>
