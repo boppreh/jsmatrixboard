@@ -169,12 +169,32 @@ Matrix.prototype.forEach = function(fn) {
     }
 };
 
+Matrix.prototype.clear = function(defaultType) {
+    defaultType = defaultType === undefined ? 0 : defaultType;
+    this.forEach(function(cell) {
+        cell.type = defaultType;
+    })
+    this.clearSelection();
+};
+
+Matrix.prototype.clearSelection = function() {
+    this.forEach(function(cell) {
+        cell.primarySelection = 0;
+        cell.secondarySelection = 0;
+    })
+};
+
 var m = new Matrix(5, 5);
+m.clear();
 m.render();
 m.onclick = function(e) {
-    e.cell.primarySelection = 1;
+    m.clearSelection();
+    if (e.cell) {
+        e.cell.type = (e.cell.type+1) % 4;
+        e.cell.primarySelection = 1;
+    }
     m.render();
-}
+};
 
         </script>
     </body>
