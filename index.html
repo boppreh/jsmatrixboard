@@ -51,7 +51,6 @@ var Matrix = function(width, height, canvas, autoResize) {
     this.context = this.canvas.getContext('2d');
 
     this.fillStyles = {0: 'none', 1: '#459990', 2: '#CC3333', 3: '#33DD33'};
-    this.borderStyles = {'default': '#CCC'};
     this.selectionStyle = {1: 'rgba(220, 220, 220)', 2: 'rgb(220, 220, 220, 0.2)'};
 
     if (autoResize === undefined || autoResize) {
@@ -102,7 +101,7 @@ Matrix.prototype.render = function () {
             }
 
             var fillStyle = this.fillStyles[cell.type];
-            var borderStyle = this.borderStyles[cell.type] || this.borderStyles['default'];
+            var borderStyle = '#CCC';
             var primarySelectionStyle = this.selectionStyle[cell.primarySelection];
             var secondarySelectionStyle = this.selectionStyle[cell.secondarySelection];
 
