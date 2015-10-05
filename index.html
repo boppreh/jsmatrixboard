@@ -51,7 +51,7 @@ var Matrix = function(width, height, canvas, autoResize) {
     this.context = this.canvas.getContext('2d');
 
     this.fillStyles = {0: 'none', 1: '#459990', 2: '#CC3333', 3: '#33DD33'};
-    this.selectionStyle = {1: 'rgba(220, 220, 220)', 2: 'rgb(220, 220, 220, 0.2)'};
+    this.selectionStyle = {1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
 
     if (autoResize === undefined || autoResize) {
         this.resize();
@@ -102,9 +102,7 @@ Matrix.prototype.render = function () {
 
             var fillStyle = this.fillStyles[cell.type];
             var borderStyle = '#CCC';
-            var primarySelectionStyle = this.selectionStyle[cell.primarySelection];
-            var secondarySelectionStyle = this.selectionStyle[cell.secondarySelection];
-
+            
             this.context.fillStyle = fillStyle;
             this.context.fillRect(x + this.cellPadding, y,
                              this.cellSize, this.cellSize);
@@ -115,7 +113,7 @@ Matrix.prototype.render = function () {
             }
 
             if (cell.primarySelection) {
-                this.context.fillStyle = primarySelectionStyle;
+                this.context.fillStyle = this.selectionStyle[cell.primarySelection];
                 this.context.beginPath();
                 this.context.moveTo(x+this.cellBorder+this.cellPadding, y+this.cellBorder);
                 this.context.lineTo(x+this.cellSize-this.cellBorder+this.cellPadding, y+this.cellBorder);
@@ -123,7 +121,7 @@ Matrix.prototype.render = function () {
                 this.context.fill();
             }
             if (cell.secondarySelection) {
-                this.context.fillStyle = secondarySelectionStyle;
+                this.context.fillStyle = this.selectionStyle[cell.secondarySelection];
                 this.context.beginPath();
                 this.context.moveTo(x+this.cellPadding+this.cellSize-this.cellBorder, y+this.cellSize-this.cellBorder);
                 this.context.lineTo(x+this.cellPadding+this.cellSize-this.cellBorder, y+this.cellBorder);
@@ -147,6 +145,8 @@ var m = new Matrix(5, 5);
 setInterval(function() {
     m.forEach(function(cell) {
         cell.type = (Math.random()*4)|0;
+        cell.primarySelection = (Math.random()*3)|0;
+        cell.secondarySelection = (Math.random()*3)|0;
     });
     m.render();    
 }, 500);
