@@ -27,33 +27,24 @@
         <script>
 "use strict";
 
-var canvas = document.getElementsByTagName('canvas')[0]
-var context = canvas.getContext('2d');
+var Renderer = function(canvas) {
+    this.canvas = canvas || document.getElementsByTagName('canvas')[0];
+    this.context = this.canvas.getContext('2d');
 
-var fillStyles = {0: '#CC3333', 1: '#33DD33', 'default': '#459990'};
-var borderStyles = {'default': '#CCC'};
-var selectionStyle = {1: 'rgba(220, 220, 220, 0.2)', 2: 'rgb(220, 220, 220)'};
-
-var Cell = function(type, primarySelection, secondarySelection) {
-    this.type = type;
-    this.primarySelection = primarySelection;
-    this.secondarySelection = secondarySelection;
-
-    this.fillStyle = fillStyles[this.type] || fillStyles['default'];
-    this.borderStyle = borderStyles[this.type] || borderStyles['default'];
-    this.primarySelectionStyle = selectionStyle[this.primarySelection] || selectionStyle['default'];
-    this.secondarySelectionStyle = selectionStyle[this.secondarySelection] || selectionStyle['default'];
+    this.fillStyles = {0: '#CC3333', 1: '#33DD33', 'default': '#459990'};
+    this.borderStyles = {'default': '#CCC'};
+    this.selectionStyle = {1: 'rgba(220, 220, 220, 0.2)', 2: 'rgb(220, 220, 220)'};
 }
 
-function render(board) {
+Renderer.prototype.render = function (board) {
     var width = board[0].length;
     var height = board.length;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
 
-    var canvasPadding = canvas.height / 20;
-    var cellSpace = Math.min((canvas.width - canvasPadding) / (width + 1), (canvas.height - canvasPadding) / (height + 1));
+    var canvasPadding = this.canvas.height / 20;
+    var cellSpace = Math.min((this.canvas.width - canvasPadding) / (width + 1), (this.canvas.height - canvasPadding) / (height + 1));
     var cellPadding;
     if (cellSpace > 10) {
         cellPadding = Math.max(1, (cellSpace / 20)|0);
@@ -63,43 +54,54 @@ function render(board) {
     var cellBorder = (cellSpace / 5)|0;
     var cellSize = cellSpace - cellPadding * 2;
     for (var col = 0; col < width; col++) {
-        var x = canvas.width/2 + (col-(width+1)/2)*cellSpace;
+        var x = this.canvas.width/2 + (col-(width+1)/2)*cellSpace;
 
         for (var row = 0; row < height; row++) {
             var y = canvasPadding + row * cellSpace;
 
             var cell = board[row][col];
 
+            var fillStyle = this.fillStyles[cell.type] || this.fillStyles['default'];
+            var borderStyle = this.borderStyles[cell.type] || this.borderStyles['default'];
+            var primarySelectionStyle = this.selectionStyle[cell.primarySelection] || this.selectionStyle['default'];
+            var secondarySelectionStyle = this.selectionStyle[cell.secondarySelection] || this.selectionStyle['default'];
+
             if (cell === null) {
                 continue;
             }
-            context.fillStyle = cell.fillStyle;
-            context.fillRect(x + cellPadding, y,
+            this.context.fillStyle = fillStyle;
+            this.context.fillRect(x + cellPadding, y,
                              cellSize, cellSize);
             if (cellSpace > 10) {
-                context.strokeStyle = cell.borderStyle;
-                context.strokeRect(x + cellPadding, y,
+                this.context.strokeStyle = borderStyle;
+                this.context.strokeRect(x + cellPadding, y,
                                    cellSize, cellSize);
             }
 
             if (cell.primarySelection) {
-                context.fillStyle = cell.primarySelectionStyle;
-                context.beginPath();
-                context.moveTo(x+cellBorder+cellPadding, y+cellBorder);
-                context.lineTo(x+cellSize-cellBorder+cellPadding, y+cellBorder);
-                context.lineTo(x+cellBorder+cellPadding, y+cellSize-cellBorder);
-                context.fill();
+                this.context.fillStyle = primarySelectionStyle;
+                this.context.beginPath();
+                this.context.moveTo(x+cellBorder+cellPadding, y+cellBorder);
+                this.context.lineTo(x+cellSize-cellBorder+cellPadding, y+cellBorder);
+                this.context.lineTo(x+cellBorder+cellPadding, y+cellSize-cellBorder);
+                this.context.fill();
             }
             if (cell.secondarySelection) {
-                context.fillStyle = cell.secondarySelectionStyle;
-                context.beginPath();
-                context.moveTo(x+cellPadding+cellSize-cellBorder, y+cellSize-cellBorder);
-                context.lineTo(x+cellPadding+cellSize-cellBorder, y+cellBorder);
-                context.lineTo(x+cellPadding+cellBorder, y+cellSize-cellBorder);
-                context.fill();
+                this.context.fillStyle = secondarySelectionStyle;
+                this.context.beginPath();
+                this.context.moveTo(x+cellPadding+cellSize-cellBorder, y+cellSize-cellBorder);
+                this.context.lineTo(x+cellPadding+cellSize-cellBorder, y+cellBorder);
+                this.context.lineTo(x+cellPadding+cellBorder, y+cellSize-cellBorder);
+                this.context.fill();
             }
         }
-    }    
+    }
+}
+
+var Cell = function(type, primarySelection, secondarySelection) {
+    this.type = type;
+    this.primarySelection = primarySelection;
+    this.secondarySelection = secondarySelection;
 }
 
 var m2 = 10;
@@ -111,7 +113,8 @@ for (var i = 0; i <= m2; i++) {
         line.push(new Cell(i == j, 2, 1));
     }
 }
-render(board);
+var r = new Renderer();
+r.render(board);
         </script>
     </body>
 </html>
