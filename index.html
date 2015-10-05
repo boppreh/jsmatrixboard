@@ -27,14 +27,26 @@
         <script>
 "use strict";
 
-var Renderer = function(canvas, pixelWidth, pixelHeight) {
+var Renderer = function(canvas, autoResize) {
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
-    this.resize(pixelWidth, pixelHeight);
 
     this.fillStyles = {0: '#CC3333', 1: '#33DD33', 'default': '#459990'};
     this.borderStyles = {'default': '#CCC'};
     this.selectionStyle = {1: 'rgba(220, 220, 220, 0.2)', 2: 'rgb(220, 220, 220)'};
+
+    this.lastBoard = null;
+
+    if (autoResize === undefined || autoResize) {
+        this.resize();
+        var self = this;
+        window.onresize = function() {
+            self.resize();
+            if (self.lastBoard) {
+                self.render(self.lastBoard);
+            }
+        }
+    }
 }
 
 Renderer.prototype.resize = function(width, height) {
@@ -43,6 +55,8 @@ Renderer.prototype.resize = function(width, height) {
 }
 
 Renderer.prototype.render = function (board) {
+    this.lastBoard = board;
+
     var width = board[0].length;
     var height = board.length;
 
