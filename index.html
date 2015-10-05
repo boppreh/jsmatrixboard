@@ -47,6 +47,9 @@ var Matrix = function(width, height, canvas, autoResize) {
         }
     }
 
+    this.history = [];
+    this.future = [];
+
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
 
@@ -181,11 +184,52 @@ Matrix.prototype.clearSelection = function() {
     this.forEach(function(cell) {
         cell.primarySelection = 0;
         cell.secondarySelection = 0;
-    })
+    });
+};
+
+Matrix.prototype.save = function() {
+    var oldBoard = this.board;
+
+    this.history.push(oldBoard);
+
+    this.board = [];
+    for (var row = 0; row < this.height; row++) {
+        var line = [];
+        this.board.push(line);
+        for (var col = 0; col < this.width; col++) {
+            var oldCell = oldBoard[row][col];
+            var newCell = new Cell(row, col);
+            for (var prop in oldCell) {
+                newCell[prop] = oldCell[prop];
+            }
+            line.push(newCell);
+        }
+    }
+
+    this.future = [];
+};
+
+Matrix.prototype.undo = function() {
+    if (this.history.length) {
+        this.future.push(this.board);
+        this.board = this.history.pop();
+    } else {
+        throw "No more history available for undo.";
+    }
+};
+
+Matrix.prototype.redo = function() {
+    if (this.future.length) {
+        this.history.push(this.board);
+        this.board = this.future.pop();
+    } else {
+        throw "No more history available for redo.";
+    }    
 };
 
 var m = new Matrix(5, 5);
 m.clear();
+m.save();
 m.render();
 m.onclick = function(e) {
     m.clearSelection();
@@ -193,9 +237,20 @@ m.onclick = function(e) {
         e.cell.type = (e.cell.type+1) % 4;
         e.cell.primarySelection = 1;
     }
+    m.save();
     m.render();
 };
 
+document.onkeydown = function(e) {
+    if (e.keyCode === 90 && e.ctrlKey) {
+        if (e.shiftKey) {
+            m.redo();
+        } else {
+            m.undo();
+        }
+        m.render();
+    }
+};
         </script>
     </body>
 </html>
