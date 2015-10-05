@@ -15,6 +15,7 @@
             color: #CCC;
         }
         canvas {
+            background-color: #EEE;
             width: 100%;
             height: 100%;
             background-color: #456990;
@@ -29,47 +30,86 @@
 var canvas = document.getElementsByTagName('canvas')[0]
 var context = canvas.getContext('2d');
 
-var width = 20;
-var height = 30;
+var fillStyles = {0: '#CC3333', 1: '#33DD33', 'default': '#459990'};
+var borderStyles = {'default': '#CCC'};
 
-function cellY(row) { return  }
-function cellX(col) { return  }
-function rowY(y) { return Math.round((y - canvasPadding) / cellSpace - 0.5); }
-function colX(x) { return Math.round((x - canvas.width/2) / cellSpace + (width+1)/2 - 0.5); }
+var Cell = function(type, primarySelection, secondarySelection) {
+    this.type = type;
+    this.fillStyle = fillStyles[this.type] || fillStyles['default'];
+    this.borderStyle = borderStyles[this.type] || borderStyles['default'];
+    this.primarySelection = Boolean(primarySelection);
+    this.secondarySelection = Boolean(secondarySelection);
+}
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function render(board) {
+    var width = board[0].length;
+    var height = board.length;
 
-var canvasPadding = canvas.height / 20;
-var cellSpace = (Math.min(canvas.width, canvas.height) - 2 * canvasPadding) / (Math.max(width, height)+1);
-var cellPadding = cellSpace / 20;
-var cellBorder = (cellSpace / 5)|0;
-var cellSize = cellSpace - cellPadding * 2;
-for (var col = 0; col < width; col++) {
-    var x = canvas.width/2 + (col-(width+1)/2)*cellSpace;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    for (var row = 0; row < height; row++) {
-        var y = canvasPadding + row * cellSpace;
+    var canvasPadding = canvas.height / 20;
+    var cellSpace = Math.min((canvas.width - canvasPadding) / (width + 1), (canvas.height - canvasPadding) / (height + 1));
+    var cellPadding;
+    if (cellSpace > 10) {
+        cellPadding = Math.max(1, (cellSpace / 20)|0);
+    } else {
+        cellPadding = 0;
+    }
+    var cellBorder = (cellSpace / 5)|0;
+    var cellSize = cellSpace - cellPadding * 2;
+    for (var col = 0; col < width; col++) {
+        var x = canvas.width/2 + (col-(width+1)/2)*cellSpace;
 
-        var correct = Math.random() > 0.9;
-        var cell = Math.random() > 0.8;
-        if (!correct && !cell) {
-            continue;
+        for (var row = 0; row < height; row++) {
+            var y = canvasPadding + row * cellSpace;
+
+            var cell = board[row][col];
+
+            if (cell === null) {
+                continue;
+            }
+            context.fillStyle = cell.fillStyle;
+            context.fillRect(x + cellPadding, y,
+                             cellSize, cellSize);
+            if (cellSpace > 10) {
+                context.strokeStyle = cell.borderStyle;
+                context.strokeRect(x + cellPadding, y,
+                                   cellSize, cellSize);
+            }
+
+            if (cell.primarySelection) {
+                context.fillStyle = '#EEE';
+                //context.globalAlpha = cell ? 1 : 0.2;
+                context.beginPath();
+                context.moveTo(x+cellBorder+cellPadding, y+cellBorder);
+                context.lineTo(x+cellSize-cellBorder+cellPadding, y+cellBorder);
+                context.lineTo(x+cellBorder+cellPadding, y+cellSize-cellBorder);
+                context.fill();
+            }
+            if (cell.secondarySelection) {
+                context.fillStyle = '#EEE';
+                //context.globalAlpha = isSrcActive(row, col) ? 0.9 : 0.1;
+                context.beginPath();
+                context.moveTo(x+cellPadding+cellSize-cellBorder, y+cellSize-cellBorder);
+                context.lineTo(x+cellPadding+cellSize-cellBorder, y+cellBorder);
+                context.lineTo(x+cellPadding+cellBorder, y+cellSize-cellBorder);
+                context.fill();
+            }
         }
-        if (correct) {
-            context.fillStyle = cell ? '#33DD33' : '#459990';
-        } else if (cell) {
-            context.fillStyle = '#CC3333';
-        }
-        context.fillRect(x + cellPadding, y,
-                         cellSize, cellSize);
-        if (cellSpace > 10) {
-            context.strokeStyle = '#CCC';
-            context.strokeRect(x + cellPadding, y,
-                               cellSize, cellSize);
-        }
+    }    
+}
+
+var m2 = 10;
+var board = [];
+for (var i = 0; i <= m2; i++) {
+    var line = [];
+    board.push(line);
+    for (var j = 0; j <= m2; j++) {
+        line.push(new Cell(i == j, Math.random() > 0.9, Math.random() > 0.9));
     }
 }
+render(board);
         </script>
     </body>
 </html>
