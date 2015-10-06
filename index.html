@@ -35,7 +35,7 @@ var Cell = function(row, col, type, primarySelection, secondarySelection) {
     this.secondarySelection = secondarySelection;
 }
 
-var Matrix = function(width, height, canvas, autoResize) {
+var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.board = [];
     this.width = width;
     this.height = height;
@@ -46,9 +46,6 @@ var Matrix = function(width, height, canvas, autoResize) {
             line.push(new Cell(row, col, 1));
         }
     }
-
-    this.history = [];
-    this.future = [];
 
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
@@ -64,6 +61,21 @@ var Matrix = function(width, height, canvas, autoResize) {
             self.updateDimensions();
             self.render(self.board);
         };
+    }
+
+    this.history = [];
+    this.future = [];
+    if (ctrlZ === undefined || ctrlZ) {
+        document.addEventListener('keydown', function(e) {
+            if (e.keyCode === 90 && e.ctrlKey) {
+                if (e.shiftKey) {
+                    m.redo();
+                } else {
+                    m.undo();
+                }
+                m.render();
+            }
+        });
     }
 
     this.lastMovement = [null, null];
@@ -249,16 +261,7 @@ m.onclick = function(e) {
     m.save();
 };
 
-document.onkeydown = function(e) {
-    if (e.keyCode === 90 && e.ctrlKey) {
-        if (e.shiftKey) {
-            m.redo();
-        } else {
-            m.undo();
-        }
-        m.render();
-    }
-};
+
         </script>
     </body>
 </html>
