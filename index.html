@@ -66,6 +66,7 @@ var Matrix = function(width, height, canvas, autoResize) {
         };
     }
 
+    this.lastMovement = [null, null];
     this.translateEventListener('onmousemove');
     this.translateEventListener('onmousedown');
     this.translateEventListener('onmouseup');
@@ -80,8 +81,17 @@ Matrix.prototype.translateEventListener = function(eventName) {
         if (self[eventName]) {
             e.col = self.xToCol(e.clientX);
             e.row = self.yToRow(e.clientY);
-            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
+            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : undefined;
+            if (eventName == 'onmousemove') {
+                var isSame = e.row == self.lastMovement[0] && e.col == self.lastMovement[1];
+                if (isSame) {
+                    return;
+                } else {
+                    self.lastMovement = [e.row, e.col];
+                }
+            }
             self[eventName](e);
+            self.render();
         }
     };
 }
@@ -237,7 +247,6 @@ m.onclick = function(e) {
         e.cell.primarySelection = 1;
     }
     m.save();
-    m.render();
 };
 
 document.onkeydown = function(e) {
