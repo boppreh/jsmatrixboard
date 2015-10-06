@@ -51,7 +51,8 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.context = this.canvas.getContext('2d');
 
     this.fillStyles = {0: 'none', 1: '#459990', 2: '#CC3333', 3: '#33DD33'};
-    this.selectionStyle = {1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
+    this.selectionStyle = {0: 'none', 1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
+    this.borderStyle = '#CCC';
 
     var self = this;
     if (autoResize === undefined || autoResize) {
@@ -155,13 +156,12 @@ Matrix.prototype.render = function () {
             }
 
             var fillStyle = this.fillStyles[cell.type];
-            var borderStyle = '#CCC';
             
             this.context.fillStyle = fillStyle;
             this.context.fillRect(x + this.cellPadding, y,
                              this.cellSize, this.cellSize);
             if (this.cellSpace > 10) {
-                this.context.strokeStyle = borderStyle;
+                this.context.strokeStyle = this.borderStyle;
                 this.context.strokeRect(x + this.cellPadding, y,
                                    this.cellSize, this.cellSize);
             }
