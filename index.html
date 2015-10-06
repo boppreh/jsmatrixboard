@@ -78,8 +78,8 @@ Matrix.prototype.translateEventListener = function(eventName) {
     var self = this;
     this.canvas[eventName] = function(e) {
         if (self[eventName]) {
-            e.col = self.xToCol(e.x);
-            e.row = self.yToRow(e.y);
+            e.col = self.xToCol(e.clientX);
+            e.row = self.yToRow(e.clientY);
             e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : null;
             self[eventName](e);
         }
@@ -228,7 +228,6 @@ Matrix.prototype.redo = function() {
 };
 
 var m = new Matrix(5, 5);
-m.clear();
 m.save();
 m.render();
 m.onclick = function(e) {
