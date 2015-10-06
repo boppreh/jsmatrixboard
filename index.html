@@ -86,6 +86,8 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.translateEventListener('onclick');
 
     this.updateDimensions();
+    this.save();
+    setTimeout(this.render.bind(this), 1);
 };
 
 Matrix.prototype.translateEventListener = function(eventName) {
@@ -96,8 +98,7 @@ Matrix.prototype.translateEventListener = function(eventName) {
             e.row = self.yToRow(e.clientY);
             e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : undefined;
             if (eventName == 'onmousemove') {
-                var isSame = e.row == self.lastMovement[0] && e.col == self.lastMovement[1];
-                if (isSame) {
+                if (e.row == self.lastMovement[0] && e.col == self.lastMovement[1]) {
                     return;
                 } else {
                     self.lastMovement = [e.row, e.col];
@@ -248,10 +249,9 @@ Matrix.prototype.redo = function() {
         throw "No more history available for redo.";
     }    
 };
-
+        </script>
+        <script>
 var m = new Matrix(5, 5);
-m.save();
-m.render();
 m.onclick = function(e) {
     m.clearSelection();
     if (e.cell) {
@@ -260,8 +260,6 @@ m.onclick = function(e) {
     }
     m.save();
 };
-
-
         </script>
     </body>
 </html>
