@@ -36,16 +36,9 @@ var Cell = function(row, col, type, primarySelection, secondarySelection) {
 }
 
 var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
-    this.board = [];
     this.width = width;
     this.height = height;
-    for (var row = 0; row < this.height; row++) {
-        var line = [];
-        this.board.push(line);
-        for (var col = 0; col < this.width; col++) {
-            line.push(new Cell(row, col, 1));
-        }
-    }
+    this.clear(1);
 
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
@@ -87,7 +80,6 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.translateEventListener('onclick');
 
     this.updateDimensions();
-    this.save();
     setTimeout(this.render.bind(this), 1);
 };
 
@@ -197,11 +189,15 @@ Matrix.prototype.forEach = function(fn) {
 };
 
 Matrix.prototype.clear = function(defaultType) {
+    this.board = [];
     defaultType = defaultType === undefined ? 0 : defaultType;
-    this.forEach(function(cell) {
-        cell.type = defaultType;
-    })
-    this.clearSelection();
+    for (var row = 0; row < this.height; row++) {
+        var line = [];
+        this.board.push(line);
+        for (var col = 0; col < this.width; col++) {
+            line.push(new Cell(row, col, defaultType));
+        }
+    }
 };
 
 Matrix.prototype.clearSelection = function() {
@@ -212,24 +208,21 @@ Matrix.prototype.clearSelection = function() {
 };
 
 Matrix.prototype.save = function() {
-    var oldBoard = this.board;
-
-    this.history.push(oldBoard);
-
-    this.board = [];
+    var backup = [];
     for (var row = 0; row < this.height; row++) {
         var line = [];
-        this.board.push(line);
+        backup.push(line);
         for (var col = 0; col < this.width; col++) {
-            var oldCell = oldBoard[row][col];
-            var newCell = new Cell(row, col);
-            for (var prop in oldCell) {
-                newCell[prop] = oldCell[prop];
+            var backupCell = new Cell();
+            var cell = this.board[row][col];
+            for (var prop in cell) {
+                backupCell[prop] = cell[prop];
             }
-            line.push(newCell);
+            line.push(backupCell);
         }
     }
 
+    this.history.push(backup);
     this.future = [];
 };
 
@@ -256,8 +249,8 @@ var m = new Matrix(5, 5);
 m.onclick = function(e) {
     m.clearSelection();
     if (e.cell) {
-        e.cell.type = (e.cell.type+1) % 4;
         m.save();
+        e.cell.type = (e.cell.type+1) % 4;
         console.log(m.history);
         e.cell.primarySelection = 1;
         m.render();
