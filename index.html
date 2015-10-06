@@ -55,6 +55,7 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.borderStyle = '#CCC';
 
     var self = this;
+
     if (autoResize === undefined || autoResize) {
         this.resize();
         window.onresize = function() {
@@ -70,11 +71,11 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
         document.addEventListener('keydown', function(e) {
             if (e.keyCode === 90 && e.ctrlKey) {
                 if (e.shiftKey) {
-                    m.redo();
+                    self.redo();
                 } else {
-                    m.undo();
+                    self.undo();
                 }
-                m.render();
+                self.render();
             }
         });
     }
@@ -256,9 +257,11 @@ m.onclick = function(e) {
     m.clearSelection();
     if (e.cell) {
         e.cell.type = (e.cell.type+1) % 4;
+        m.save();
+        console.log(m.history);
         e.cell.primarySelection = 1;
+        m.render();
     }
-    m.save();
 };
         </script>
     </body>
