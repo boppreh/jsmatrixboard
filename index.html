@@ -261,10 +261,6 @@ m.onmousemove = function(e) {
 }
 m.onmouseup = function(e) {
     selectionEnd = selectionCurrent;
-    if (m.board[0][selectionStart] === undefined && m.board[0][selectionEnd] === undefined) {
-        selectionStart = null;
-        selectionEnd = null;
-    }
     updateSelection();
 }
 function updateSelection() {
@@ -274,19 +270,14 @@ function updateSelection() {
 
     var end = selectionEnd === null ? selectionCurrent : selectionEnd;
     var selectionDistance = selectionEnd - selectionStart;
-    console.log(selectionDistance);
     m.forEach(function(cell) {
-        cell.primarySelection = (cell.col >= Math.min(selectionStart, end) && cell.col <= Math.max(selectionStart, end))|0;
-
-        cell.secondarySelection = 0;
-        if (selectionEnd !== null) {
-            var distance = selectionCurrent - cell.col;
-            if (selectionDistance > 0) {
-                cell.secondarySelection = (distance >= 0 && distance <= selectionDistance)|0;
-            } else {
-                cell.secondarySelection = (distance <= 0 && distance >= selectionDistance)|0;
-            }
+        if (cell.col >= Math.min(selectionStart, end) && cell.col <= Math.max(selectionStart, end)) {
+            cell.primarySelection = (cell.type === 0) ? 1 : 2;
+        } else {
+            cell.primarySelection = 0;
         }
+        cell.src = m.board[cell.row][cell.col - (selectionCurrent - selectionEnd)];
+        cell.secondarySelection = (selectionEnd !== null && cell.src) ? cell.src.primarySelection : 0;
     });
 }
         </script>
