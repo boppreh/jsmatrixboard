@@ -287,11 +287,13 @@ function updateSelection() {
         } else {
             cell.primarySelection = 0;
         }
-        cell.src = m.board[cell.row][cell.col - (selectionCurrent - selectionEnd)];
-        cell.secondarySelection = (selectionEnd !== null && cell.src) ? cell.src.primarySelection : 0;
-        if (cell.secondarySelection) {
-            cell.resultType = (cell.type >= 1 ^ cell.secondarySelection === 1) ? 3 : 0;
+
+        var src = m.board[cell.row][cell.col - (selectionCurrent - selectionEnd)];
+        if (selectionEnd !== null && src && src.primarySelection) {
+            cell.secondarySelection = src.primarySelection;
+            cell.resultType = (cell.type >= 1 ^ src.type >= 1) ? 3 : 0;
         } else {
+            cell.secondarySelection = 0;
             cell.resultType = cell.type;
         }
     });
