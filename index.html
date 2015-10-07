@@ -43,7 +43,7 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
 
-    this.fillStyles = {0: 'none', 1: '#459990', 2: '#CC3333', 3: '#33DD33'};
+    this.fillStyles = {0: 'none', 1: '#459990', 2: '#CC3333', 3: '#33DD33', 4: '#156615'};
     this.selectionStyle = {0: 'none', 1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
     this.borderStyle = '#CCC';
 
@@ -145,19 +145,17 @@ Matrix.prototype.render = function () {
             var y = this.canvasPadding + row * this.cellSpace;
 
             var cell = this.board[row][col];
-            if (cell.type === 0) {
-                continue;
-            }
-
-            var fillStyle = this.fillStyles[cell.type];
-            
-            this.context.fillStyle = fillStyle;
-            this.context.fillRect(x + this.cellPadding, y,
-                             this.cellSize, this.cellSize);
-            if (this.cellSpace > 10) {
-                this.context.strokeStyle = this.borderStyle;
-                this.context.strokeRect(x + this.cellPadding, y,
-                                   this.cellSize, this.cellSize);
+            if (cell.type !== 0) {
+                var fillStyle = this.fillStyles[cell.type];
+                
+                this.context.fillStyle = fillStyle;
+                this.context.fillRect(x + this.cellPadding, y,
+                                 this.cellSize, this.cellSize);
+                if (this.cellSpace > 10) {
+                    this.context.strokeStyle = this.borderStyle;
+                    this.context.strokeRect(x + this.cellPadding, y,
+                                       this.cellSize, this.cellSize);
+                }
             }
 
             if (cell.primarySelection) {
@@ -246,13 +244,26 @@ Matrix.prototype.redo = function() {
         </script>
         <script>
 var m = new Matrix(10);
+m.forEach(function(cell) {
+    cell.type = (cell.row === cell.col) ? 3 : 0;
+});
 
 var selectionStart = null;
 var selectionEnd = null;
 var selectionCurrent = null;
 m.onmousedown = function(e) {
-    selectionStart = e.col;
-    selectionEnd = null;
+    if (selectionStart !== null && selectionEnd !== null) {
+        m.clearSelection();
+        m.save();
+        m.forEach(function(cell) {
+            cell.type = cell.resultType;
+        });
+        selectionStart = null;
+        selectionEnd = null;
+    } else {
+        selectionStart = e.col;
+        selectionEnd = null;
+    }
     updateSelection();
 }
 m.onmousemove = function(e) {
@@ -272,12 +283,17 @@ function updateSelection() {
     var selectionDistance = selectionEnd - selectionStart;
     m.forEach(function(cell) {
         if (cell.col >= Math.min(selectionStart, end) && cell.col <= Math.max(selectionStart, end)) {
-            cell.primarySelection = (cell.type === 0) ? 1 : 2;
+            cell.primarySelection = (cell.type === 0) ? 2 : 1;
         } else {
             cell.primarySelection = 0;
         }
         cell.src = m.board[cell.row][cell.col - (selectionCurrent - selectionEnd)];
         cell.secondarySelection = (selectionEnd !== null && cell.src) ? cell.src.primarySelection : 0;
+        if (cell.secondarySelection) {
+            cell.resultType = (cell.type >= 1 ^ cell.secondarySelection === 1) ? 3 : 0;
+        } else {
+            cell.resultType = cell.type;
+        }
     });
 }
         </script>
