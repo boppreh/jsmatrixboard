@@ -264,28 +264,54 @@ Matrix.prototype.debug = function(prop, value) {
 }
         </script>
         <script>
-var Model = function(m, a) {
-    this.m = m;
-    this.a = a;
-    this.ma = m - a;
-    this.m2 = 2 * m - 2;
-    this.size = this.m2 + 1;
+var Model = function(coeffs) {
+	this.coeffs = coeffs;
+    this.size = 2 * this.coeffs[0] - 2;
 }
 
 Model.prototype.isCorrect = function(row, col) {
-    var xored0 = row - this.m >= col && (row - col - this.m) % this.ma == 0;
-    var xoredA = col >= this.a && (row - col - this.ma) % this.ma == 0;
-    return row >= col && (row == col || (row >= this.m && xoredA ^ xored0));
+    var m = this.coeffs[0];
+    var a = this.coeffs[1];
+
+    var rowm = row - m;
+    var xored;
+    for (var i = 0; i < this.coeffs.length; i++) {
+        var c = i === 0 ? 0 : this.coeffs[i];
+        var cola = col - c;
+        xored ^= cola >= 0 && rowm >= cola && (rowm - cola) % (m - a) === 0;
+	}
+    
+    return xored;
 }
 
-var model = new Model(9, 6);
+Model.prototype.show = function(matrix) {
+    matrix.forEach(function(cell) {
+        cell.type = model.isCorrect(cell.row, cell.col) ? 1 : 0;
+    });
+    matrix.render();
+}
+
+var model = new Model([100, 60, 50, 10]);
 var matrix = new Matrix(model.size, model.size);
-matrix.forEach(function(cell) {
-    cell.type = (cell.row === cell.col) ? 3 : model.isCorrect(cell.row, cell.col) ? 1 : 0;
-});
-matrix.debug['count'] = 0;
 
+matrix.debug = model.coeffs;
+model.show(matrix);
 
+var selectedCoeff = 1;
+document.onwheel = function(e) {
+    if (e.shiftKey) {
+        selectedCoeff = (selectedCoeff + 1) % model.coeffs.length;
+    } else {
+        var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
+        var n = model.coeffs[selectedCoeff] + delta;
+        var lowerBound = model.coeffs[selectedCoeff+1] + 1 || 1;
+        var upperBound = model.coeffs[selectedCoeff-1] - 1 || Infinity;
+        model.coeffs[selectedCoeff] = Math.min(Math.max(n, lowerBound), upperBound);
+        model.show(matrix);
+    }
+}
+
+/*
 var selectionStart = null;
 var selectionEnd = null;
 var selectionCurrent = null;
@@ -343,6 +369,7 @@ function updateSelection() {
         }
     });
 }
+*/
         </script>
     </body>
 </html>
