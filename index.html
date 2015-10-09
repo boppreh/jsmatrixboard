@@ -279,7 +279,7 @@ Model.prototype.isCorrect = function(row, col) {
         xored ^= cola >= 0 && rowm >= cola && (rowm - cola) % (m - a) === 0;
 	}
     
-    return xored;
+    return row === col || xored;
 }
 
 Model.prototype.show = function(matrix) {
