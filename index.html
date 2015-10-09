@@ -257,16 +257,14 @@ Matrix.prototype.redo = function() {
         throw "No more history available for redo.";
     }    
 };
-
-Matrix.prototype.debug = function(prop, value) {
-    this.debug[prop] = value;
-    this.render();
-}
         </script>
         <script>
 var Model = function(coeffs) {
 	this.coeffs = coeffs;
-    this.size = 2 * this.coeffs[0] - 2;
+}
+
+Model.prototype.size = function() {
+    return 2 * this.coeffs[0] - 2;
 }
 
 Model.prototype.isCorrect = function(row, col) {
@@ -291,24 +289,42 @@ Model.prototype.show = function(matrix) {
     matrix.render();
 }
 
-var model = new Model([100, 60, 50, 10]);
-var matrix = new Matrix(model.size, model.size);
+var model = new Model((window.location.hash && window.location.hash.slice(1).split(',').map(Number)) || [100, 5, 4, 3]);
 
-matrix.debug = model.coeffs;
-model.show(matrix);
+var matrix;
+function createMatrix() {
+    matrix = new Matrix(model.size(), model.size());
+    model.show(matrix);
+}
+createMatrix();
+
 
 var selectedCoeff = 1;
 document.onwheel = function(e) {
+    var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
     if (e.shiftKey) {
-        selectedCoeff = (selectedCoeff + 1) % model.coeffs.length;
+        selectedCoeff = (selectedCoeff - delta) % model.coeffs.length;
     } else {
-        var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
         var n = model.coeffs[selectedCoeff] + delta;
         var lowerBound = model.coeffs[selectedCoeff+1] + 1 || 1;
         var upperBound = model.coeffs[selectedCoeff-1] - 1 || Infinity;
         model.coeffs[selectedCoeff] = Math.min(Math.max(n, lowerBound), upperBound);
-        model.show(matrix);
+        if (selectedCoeff === 0) {
+            createMatrix();
+        }
     }
+    var letters = "mabcdefghijkl";
+    var debug = {};
+    for (var i = 0; i < model.coeffs.length; i++) {
+        if (i === selectedCoeff) {
+            debug['*' + letters[i]] = model.coeffs[i];
+        } else {
+            debug[letters[i]] = model.coeffs[i];
+        }
+        
+    }
+    matrix.debug = debug;
+    model.show(matrix);
 }
 
 /*
