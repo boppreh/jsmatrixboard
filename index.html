@@ -303,7 +303,7 @@ var selectedCoeff = 1;
 document.onwheel = function(e) {
     var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
     if (e.shiftKey) {
-        selectedCoeff = (selectedCoeff - delta) % model.coeffs.length;
+        selectedCoeff = Math.min(Math.max(0, selectedCoeff - delta), model.coeffs.length - 1);
     } else {
         var n = model.coeffs[selectedCoeff] + delta;
         var lowerBound = model.coeffs[selectedCoeff+1] + 1 || 1;
