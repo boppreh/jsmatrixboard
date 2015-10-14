@@ -263,29 +263,31 @@ var Model = function(coeffs) {
 	this.coeffs = coeffs;
 }
 
-Model.prototype.size = function() {
-    return 2 * this.coeffs[0] - 1;
-}
-
 Model.prototype.isCorrect = function(row, col) {
     var m = this.coeffs[0];
     var a = this.coeffs[1];
 
-    var rowm = row - m;
     var xored;
     for (var i = 0; i < this.coeffs.length; i++) {
-        var c = i === 0 ? 0 : this.coeffs[i];
-        var cola = col - c;
-        xored ^= cola >= 0 && rowm >= cola && (rowm - cola) % (m - a) === 0;
+        var cola = col - this.coeffs[i];
+        xored ^= cola >= 0 && row >= cola && (row - cola) % (m - a) === 0;
 	}
     
-    return row === col || xored;
+    return xored;
 }
 
 Model.prototype.show = function(matrix) {
+    var xorCount = 0;
+    var m = this.coeffs[0];
     matrix.forEach(function(cell) {
-        cell.type = model.isCorrect(cell.row, cell.col) ? 1 : 0;
+        if (cell.col < m && model.isCorrect(cell.row, cell.col)) {
+            xorCount++;
+            cell.type = 1;
+        } else {
+            cell.type = 0;
+        }
     });
+    matrix.debug['xorCount'] = xorCount;
     matrix.render();
 }
 
@@ -293,7 +295,7 @@ var model = new Model((window.location.hash && window.location.hash.slice(1).spl
 
 var matrix;
 function createMatrix() {
-    matrix = new Matrix(model.size(), model.size());
+    matrix = new Matrix(model.coeffs[0], model.coeffs[0]);
     model.show(matrix);
 }
 createMatrix();
