@@ -465,13 +465,7 @@ function updateSelection() {
 
 
         <script>
-var running = false;
-var ttl;
 function merge(fromStart, b, c) {
-    if (ttl-- <= 0) {
-        throw "stop";
-    }
-
     var to, fromEnd;
     if (c === undefined) {
         fromEnd = fromStart;
@@ -490,7 +484,6 @@ function merge(fromStart, b, c) {
     selectionCurrent = to;
 }
 
-var lastTtl = 0;
 var words = [];
 var W = 32;
 function xor(wordDst, values) {
@@ -556,17 +549,17 @@ function lor(left, right) {
     }
     return result;
 }
-function stepUserAlgorithm() {
-    if (!running) {
-        return;
-    }
 
-    var m = model.coeffs[0];
-    var a = model.coeffs[1];
-    var b = model.coeffs[2];
-    var c = model.coeffs[3];
-    var ma = m - a;
-    var m2 = 2 * m - 2;
+var timeoutId = null;
+var lastStep = -1;
+var steps = [];
+var m2;
+
+function stepUserAlgorithm() {
+    if (lastStep >= steps.length) {
+        stopUserAlgorithm();
+        return;
+    }    
 
     words = [];
     for (var i = 0; i <= m2/W; i++) {
@@ -578,51 +571,56 @@ function stepUserAlgorithm() {
     }
     var C = words;
 
-    rangeCount = 0;
-    bitCount = 0;
-    matrix.forEach(function(cell) {
-        cell.isActive = cell.row === cell.col;
-    });
-
-    ttl = ++lastTtl;
-    try {
-        eval(document.getElementById('user-algorithm').value);
-        stopUserAlgorithm();
-    } catch (e) {
-        if (e == "stop") {
-            setTimeout(stepUserAlgorithm, 10 * 1000 / m2);
-        } else {
-            alert(e);
-            throw e;
-            stopUserAlgorithm();
-        }
-    }
+    merge.apply(null, steps[++lastStep]);
 
     model.update(matrix);
     updateSelection();
     matrix.render();
-
-    ttl = Infinity;
 }
 function runUserAlgorithm() {
-    running = true;
-    lastTtl = 0;
+    rangeCount = 0;
+    bitCount = 0;
     document.getElementById('start-controls').style.display = 'none';
     document.getElementById('running-controls').style.display = 'block';
-    stepUserAlgorithm();
+
+    steps = [];
+    lastStep = -1;
+    function merge(a, b, c) {
+        steps.push([a, b, c]);
+    }
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+    });
+    var m = model.coeffs[0];
+    var a = model.coeffs[1];
+    var b = model.coeffs[2];
+    var c = model.coeffs[3];
+    m2 = 2 * m - 2;
+    try {
+        eval(document.getElementById('user-algorithm').value);
+    } catch (e) {
+        alert(e);
+        throw e;
+    }
+
+    playPauseUserAlgorithm();
 }
 function playPauseUserAlgorithm() {
-    running = !running;
-    document.getElementById('btn-play-pause').innerHTML = running ? 'Pause' : 'Play';
-    if (running) {
-        stepUserAlgorithm();
+    if (timeoutId) {
+        clearInterval(timeoutId);
+        timeoutId = null;
+    } else {
+        timeoutId = setInterval(stepUserAlgorithm, 10 * 1000 / m2);
     }
+    
+    document.getElementById('btn-play-pause').innerHTML = timeoutId ? 'Pause' : 'Play';
 }
 function stopUserAlgorithm() {
     selectionStart = null;
     selectionEnd = null;
     selectionCurrent = null;
-    running = false; 
+    timeoutId = null;
+    clearInterval(timeoutId);
     document.getElementById('start-controls').style.display = 'block';
     document.getElementById('running-controls').style.display = 'none';
 }
