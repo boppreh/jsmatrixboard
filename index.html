@@ -27,12 +27,13 @@
         <script>
 "use strict";
 
-var Cell = function(row, col, type, primarySelection, secondarySelection) {
-    this.row = row;
-    this.col = col;
-    this.type = type;
-    this.primarySelection = primarySelection;
-    this.secondarySelection = secondarySelection;
+var Cell = function(row, col, type, background, primarySelection, secondarySelection) {
+    this.row = row || 0;
+    this.col = col || 0;
+    this.type = type || 0;
+    this.background = background || 0;
+    this.primarySelection = primarySelection || 0;
+    this.secondarySelection = secondarySelection || 0;
 }
 
 var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
@@ -43,7 +44,8 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
 
-    this.fillStyles = {0: 'none', 1: '#33DD33', 2: '#459990', 3: '#CC3333', 4: '#426687'};
+    this.fillStyles = {0: 'none', 1: '#33DD33', 2: '#459990', 3: '#CC3333'};
+    this.backgrounds = {0: 'none', 1: '#426687'};
     this.selectionStyle = {0: 'none', 1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
     this.borderStyle = '#CCC';
 
@@ -148,6 +150,14 @@ Matrix.prototype.render = function () {
             var y = this.canvasPadding + row * this.cellSpace;
 
             var cell = this.board[row][col];
+
+            if (cell.background !== 0) {
+                var fillStyle = this.backgrounds[cell.background];
+                this.context.fillStyle = fillStyle;
+                this.context.fillRect(x, y - this.cellPadding,
+                                 this.cellSpace, this.cellSpace);
+            }
+
             if (cell.type !== 0) {
                 var fillStyle = this.fillStyles[cell.type];
                 
@@ -303,7 +313,7 @@ var coeffs;
 if (hash) {
     coeffs = window.location.hash.slice(1).split(',').map(Number);
 } else {
-    coeffs = [100, 98, 96, 2, 0];
+    coeffs = [20, 15, 10, 5, 0];
 }
 var model = new Model(coeffs);
 
@@ -373,9 +383,7 @@ matrix.onmousemove = function(e) {
     selectionCurrent = e.col;
     updateSelection();
     matrix.forEach(function(cell) {
-        if (cell.type === 0 || cell.type === 4) {
-            cell.type = cell.row === e.row || cell.col === e.col ? 4 : 0;
-        }
+        cell.background = cell.row === e.row || cell.col === e.col ? 1 : 0;
     });
 }
 matrix.onmouseup = function(e) {
