@@ -43,7 +43,7 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
 
-    this.fillStyles = {0: 'none', 1: '#156615', 2: '#CC3333', 3: '#33DD33'};
+    this.fillStyles = {0: 'none', 1: '#33DD33', 2: '#459990', 3: '#CC3333'};
     this.selectionStyle = {0: 'none', 1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
     this.borderStyle = '#CCC';
 
@@ -258,6 +258,10 @@ Matrix.prototype.redo = function() {
     }    
 };
         </script>
+
+
+
+
         <script>
 var Model = function(coeffs) {
     coeffs.sort(function(a,b){return b - a});
@@ -269,21 +273,24 @@ Model.prototype.isCorrect = function(row, col) {
     var a = this.coeffs[1];
 
     var xored;
+    var rowr = row - m;
     for (var i = 0; i < this.coeffs.length; i++) {
-        var cola = col - this.coeffs[i];
-        xored ^= cola >= 0 && row >= cola && (row - cola) % (m - a) === 0;
+        var colr = col - this.coeffs[i];
+        xored ^= colr >= 0 && rowr >= colr && (rowr - colr) % (m - a) === 0;
 	}
     
-    return xored;
+    return row === col || (xored && col < m);
 }
 
 Model.prototype.show = function(matrix) {
     matrix.debug['cellCount'] = 0;
     var m = this.coeffs[0];
     matrix.forEach(function(cell) {
-        if (cell.col < m && model.isCorrect(cell.row, cell.col)) {
-            matrix.debug['cellCount']++;
-            cell.type = 1;
+        if (model.isCorrect(cell.row, cell.col)) {
+            if (cell.col < m) {
+                matrix.debug['cellCount']++;
+            }
+            cell.type = cell.row === cell.col ? 1 : 2;
         } else {
             cell.type = 0;
         }
@@ -296,13 +303,13 @@ var coeffs;
 if (hash) {
     coeffs = window.location.hash.slice(1).split(',').map(Number);
 } else {
-    coeffs = [100, 5, 4, 3];
+    coeffs = [10, 5, 0];
 }
 var model = new Model(coeffs);
 
 var matrix;
 function createMatrix() {
-    matrix = new Matrix(model.coeffs[0]*2, model.coeffs[0]-1);
+    matrix = new Matrix(model.coeffs[0]*2-1, model.coeffs[0]*2-1);
     matrix.debug.count = 0;
     model.show(matrix);
 }
