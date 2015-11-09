@@ -71,9 +71,6 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
                     self.undo();
                 }
                 self.render();
-            } else if (e.keyCode === 27) {
-                self.clearSelection();
-                self.render();
             }
         });
     }
@@ -360,6 +357,14 @@ document.onwheel = function(e) {
     model.update(matrix);
     matrix.render();
 }
+document.addEventListener('keydown', function(e) {
+    if (e.keyCode === 27) {
+        selectionStart = null;
+        selectionEnd = null;
+        matrix.clearSelection();
+        matrix.render();
+    }
+});
 
 function isInRange(value, start, end) {
     return value >= Math.min(start, end) && value <= Math.max(start, end);
