@@ -43,7 +43,7 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.canvas = canvas || document.getElementsByTagName('canvas')[0];
     this.context = this.canvas.getContext('2d');
 
-    this.fillStyles = {0: 'none', 1: '#33DD33', 2: '#459990', 3: '#CC3333'};
+    this.fillStyles = {0: 'none', 1: '#33DD33', 2: '#459990', 3: '#CC3333', 4: '#426687'};
     this.selectionStyle = {0: 'none', 1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
     this.borderStyle = '#CCC';
 
@@ -303,7 +303,7 @@ var coeffs;
 if (hash) {
     coeffs = window.location.hash.slice(1).split(',').map(Number);
 } else {
-    coeffs = [10, 5, 0];
+    coeffs = [100, 98, 96, 2, 0];
 }
 var model = new Model(coeffs);
 
@@ -372,6 +372,11 @@ matrix.onmousedown = function(e) {
 matrix.onmousemove = function(e) {
     selectionCurrent = e.col;
     updateSelection();
+    matrix.forEach(function(cell) {
+        if (cell.type === 0 || cell.type === 4) {
+            cell.type = cell.row === e.row || cell.col === e.col ? 4 : 0;
+        }
+    });
 }
 matrix.onmouseup = function(e) {
     selectionEnd = selectionCurrent;
