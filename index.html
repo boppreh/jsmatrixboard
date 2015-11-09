@@ -20,9 +20,31 @@
             height: 100%;
             background-color: #456990;
         }
+        #input-div {
+            padding: 10px;
+            position: fixed;
+            background-color: #426487;
+            display: flex;
+            flex-direction: column;
+            /*visibility: hidden;*/
+        }
         </style>
     </head>
     <body>
+        <div id="input-div" draggable="true">
+            <textarea cols=30 rows=10 id="user-algorithm">for (var i = m - 2; i >= 0; i--) {
+    merge(i+m, i+a);
+    merge(i+m, i);
+}</textarea>
+            <div id="start-controls">
+                <button onclick="runUserAlgorithm();">Apply</button>
+            </div>
+            <div id="running-controls" style="display: none;">
+                <button id="btn-play-pause" onclick="playPauseUserAlgorithm();">Pause</button>
+                <button onclick="running = true; stepUserAlgorithm(); running=false;">Step</button>
+                <button onclick="stopUserAlgorithm();">Stop</button>
+            </div>
+        </div>
         <canvas></canvas>
         <script>
 "use strict";
@@ -380,15 +402,12 @@ function findSrc(cell, srcStart, srcEnd, targetStart) {
 }
 
 function applyMerge(srcStart, srcEnd, targetStart) {
-    matrix.clearSelection();
-    matrix.save();
     matrix.forEach(function(cell) {
         var src = findSrc(cell, srcStart, srcEnd, targetStart);
         if (src) {
             cell.isActive ^= src.isActive;
         }
     });
-    model.update(matrix);
 }
 
 var selectionStart = null;
@@ -396,11 +415,14 @@ var selectionEnd = null;
 var selectionCurrent = null;
 matrix.onmousedown = function(e) {
     if (selectionStart !== null && selectionEnd !== null) {
+        matrix.clearSelection();
+        matrix.save();
         applyMerge(selectionStart, selectionEnd, selectionCurrent);
         if (!e.shiftKey) {
             selectionStart = null;
             selectionEnd = null;
         }
+        model.update(matrix);
         matrix.debug['count']++;
     } else {
         selectionStart = e.col;
@@ -437,6 +459,172 @@ function updateSelection() {
             cell.secondarySelection = src ? src.primarySelection : 0;
         }
     });
+}
+        </script>
+
+
+
+        <script>
+var running = false;
+var ttl;
+function merge(fromStart, b, c) {
+    if (ttl-- <= 0) {
+        throw "stop";
+    }
+
+    var to, fromEnd;
+    if (c === undefined) {
+        fromEnd = fromStart;
+        to = b;
+    } else {
+        fromEnd = b;
+        to = c;
+    }
+
+    rangeCount++;
+    bitCount += Math.abs(fromEnd - fromStart);
+    applyMerge(fromStart, fromEnd, to);
+
+    selectionStart = fromStart;
+    selectionEnd = fromEnd;
+    selectionCurrent = to;
+}
+
+var lastTtl = 0;
+var words = [];
+var W = 32;
+function xor(wordDst, values) {
+    var groups = [];
+    for (var i = 0; i < values.length; i++) {
+        if (values[i] === null) {
+            continue;
+        }
+
+        var lastGroup = groups[groups.length-1];
+        if (lastGroup !== undefined && i === lastGroup[1] + 1 && values[i] === values[lastGroup[1]] + 1) {
+            lastGroup[1]++;
+        } else {
+            groups.push([i, i]);
+        }
+    }
+    
+    for (var i = 0; i < groups.length; i++) {
+        var group = groups[i];
+        var start = group[0];
+        var end = group[1];
+        merge(values[start], values[end], words[wordDst][start]);
+    }
+}
+function mask(values, mask) {
+    var result = [] ;
+    for (var i = 0; i < W; i++) {
+        result[i] = mask % 2 == 1 ? values[i] : null;
+        mask = (mask/2)|0; 
+    }
+    return result;
+}
+function lshift(values, amount) {
+    if (amount < 0) {
+        return rshift(values, -amount);
+    }
+    var result = [];
+    for (var i = 0; i < amount; i++) {
+        result.push(null);
+    }
+    for (var i = amount; i < W; i++) {
+        result.push(values[i - amount]);
+    }
+    return result;
+}
+function rshift(values, amount) {
+    if (amount < 0) {
+        return lshift(values, -amount);
+    }
+    var result = [];
+    for (var i = 0; i < W - amount; i++) {
+        result.push(values[i + amount]);
+    }
+    for (var i = W - amount; i < W; i++) {
+        result.push(null);
+    }
+    return result;
+}
+function lor(left, right) {
+    var result = [];
+    for (var i = 0; i < W; i++) {
+        result.push(left[i] !== null ? left[i] : right[i]);
+    }
+    return result;
+}
+function stepUserAlgorithm() {
+    if (!running) {
+        return;
+    }
+
+    var m = model.coeffs[0];
+    var a = model.coeffs[1];
+    var b = model.coeffs[2];
+    var c = model.coeffs[3];
+    var ma = m - a;
+    var m2 = 2 * m - 2;
+
+    words = [];
+    for (var i = 0; i <= m2/W; i++) {
+        words.push([]);
+        for (var j = 0; j < W; j++) {
+            var index = j + i * W
+            words[i][j] = index <= m2 ? index : null;
+        }
+    }
+    var C = words;
+
+    rangeCount = 0;
+    bitCount = 0;
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+    });
+
+    ttl = ++lastTtl;
+    try {
+        eval(document.getElementById('user-algorithm').value);
+        stopUserAlgorithm();
+    } catch (e) {
+        if (e == "stop") {
+            setTimeout(stepUserAlgorithm, 10 * 1000 / m2);
+        } else {
+            alert(e);
+            throw e;
+            stopUserAlgorithm();
+        }
+    }
+
+    model.update(matrix);
+    updateSelection();
+    matrix.render();
+
+    ttl = Infinity;
+}
+function runUserAlgorithm() {
+    running = true;
+    lastTtl = 0;
+    document.getElementById('start-controls').style.display = 'none';
+    document.getElementById('running-controls').style.display = 'block';
+    stepUserAlgorithm();
+}
+function playPauseUserAlgorithm() {
+    running = !running;
+    document.getElementById('btn-play-pause').innerHTML = running ? 'Pause' : 'Play';
+    if (running) {
+        stepUserAlgorithm();
+    }
+}
+function stopUserAlgorithm() {
+    selectionStart = null;
+    selectionEnd = null;
+    selectionCurrent = null;
+    running = false; 
+    document.getElementById('start-controls').style.display = 'block';
+    document.getElementById('running-controls').style.display = 'none';
 }
         </script>
     </body>
