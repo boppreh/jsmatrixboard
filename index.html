@@ -71,6 +71,9 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
                     self.undo();
                 }
                 self.render();
+            } else if (e.keyCode === 27) {
+                self.clearSelection();
+                self.render();
             }
         });
     }
@@ -292,20 +295,20 @@ Model.prototype.isCorrect = function(row, col) {
     return row === col || (xored && col < m);
 }
 
-Model.prototype.show = function(matrix) {
+Model.prototype.update = function(matrix) {
     matrix.debug['cellCount'] = 0;
     var m = this.coeffs[0];
     matrix.forEach(function(cell) {
-        if (model.isCorrect(cell.row, cell.col)) {
-            if (cell.col < m) {
-                matrix.debug['cellCount']++;
-            }
-            cell.type = cell.row === cell.col ? 1 : 2;
+        cell.isCorrect = model.isCorrect(cell.row, cell.col);
+        if (cell.isCorrect && cell.col < m) {
+            matrix.debug['cellCount']++;
+        }
+        if (cell.isCorrect) {
+            cell.type = cell.isActive ? 1 : 2;
         } else {
-            cell.type = 0;
+            cell.type = cell.isActive ? 3 : 0;
         }
     });
-    matrix.render();
 }
 
 var hash = window.location.hash;
@@ -321,7 +324,10 @@ var matrix;
 function createMatrix() {
     matrix = new Matrix(model.coeffs[0]*2-1, model.coeffs[0]*2-1);
     matrix.debug.count = 0;
-    model.show(matrix);
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+    });
+    model.update(matrix);
 }
 createMatrix();
 
@@ -351,7 +357,33 @@ document.onwheel = function(e) {
         
     }
     matrix.debug = debug;
-    model.show(matrix);
+    model.update(matrix);
+    matrix.render();
+}
+
+function isInRange(value, start, end) {
+    return value >= Math.min(start, end) && value <= Math.max(start, end);
+}
+
+function findSrc(cell, srcStart, srcEnd, targetStart) {
+    var targetCol = cell.col - (targetStart - srcEnd);
+    if (isInRange(targetCol, srcStart, srcEnd)) {
+        return matrix.board[cell.row][targetCol];
+    } else {
+        return null;
+    }    
+}
+
+function applyMerge(srcStart, srcEnd, targetStart) {
+    matrix.clearSelection();
+    matrix.save();
+    matrix.forEach(function(cell) {
+        var src = findSrc(cell, srcStart, srcEnd, targetStart);
+        if (src) {
+            cell.isActive ^= src.isActive;
+        }
+    });
+    model.update(matrix);
 }
 
 var selectionStart = null;
@@ -359,15 +391,7 @@ var selectionEnd = null;
 var selectionCurrent = null;
 matrix.onmousedown = function(e) {
     if (selectionStart !== null && selectionEnd !== null) {
-        matrix.clearSelection();
-        matrix.save();
-        matrix.forEach(function(cell) {
-            if (cell.willActivate) {
-                cell.type = model.isCorrect(cell.row, cell.col) ? 3 : 2;
-            } else {
-                cell.type = model.isCorrect(cell.row, cell.col) ? 1 : 0;
-            }
-        });
+        applyMerge(selectionStart, selectionEnd, selectionCurrent);
         if (!e.shiftKey) {
             selectionStart = null;
             selectionEnd = null;
@@ -381,10 +405,10 @@ matrix.onmousedown = function(e) {
 }
 matrix.onmousemove = function(e) {
     selectionCurrent = e.col;
-    updateSelection();
     matrix.forEach(function(cell) {
         cell.background = cell.row === e.row || cell.col === e.col ? 1 : 0;
     });
+    updateSelection();
 }
 matrix.onmouseup = function(e) {
     selectionEnd = selectionCurrent;
@@ -396,21 +420,16 @@ function updateSelection() {
     }
 
     var end = selectionEnd === null ? selectionCurrent : selectionEnd;
-    var selectionDistance = selectionEnd - selectionStart;
     matrix.forEach(function(cell) {
-        if (cell.col >= Math.min(selectionStart, end) && cell.col <= Math.max(selectionStart, end)) {
-            cell.primarySelection = (cell.type <= 1) ? 2 : 1;
+        if (isInRange(cell.col, selectionStart, end)) {
+            cell.primarySelection = cell.isActive ? 1 : 2;
         } else {
             cell.primarySelection = 0;
         }
 
-        var src = matrix.board[cell.row][cell.col - (selectionCurrent - selectionEnd)];
-        if (selectionEnd !== null && src && src.primarySelection) {
-            cell.secondarySelection = src.primarySelection;
-            cell.willActivate = cell.type >= 2 ^ src.type >= 2;
-        } else {
-            cell.secondarySelection = 0;
-            cell.willActivate = cell.type >= 2;
+        if (selectionEnd !== null) {
+            var src = findSrc(cell, selectionStart, selectionEnd, selectionCurrent);
+            cell.secondarySelection = src ? src.primarySelection : 0;
         }
     });
 }
