@@ -602,7 +602,7 @@ function runUserAlgorithm() {
         alert(e);
         throw e;
     }
-
+    timeoutId = null;
     playPauseUserAlgorithm();
 }
 function playPauseUserAlgorithm() {
@@ -610,17 +610,15 @@ function playPauseUserAlgorithm() {
         clearInterval(timeoutId);
         timeoutId = null;
     } else {
-        timeoutId = setInterval(stepUserAlgorithm, 10 * 1000 / m2);
+        timeoutId = setInterval(stepUserAlgorithm, Math.ceil(10 * 1000 / steps.length));
+        console.log(Math.ceil(10 * 1000 / steps.length));
     }
     
     document.getElementById('btn-play-pause').innerHTML = timeoutId ? 'Pause' : 'Play';
 }
 function stopUserAlgorithm() {
-    selectionStart = null;
-    selectionEnd = null;
-    selectionCurrent = null;
-    timeoutId = null;
     clearInterval(timeoutId);
+    timeoutId = null;
     document.getElementById('start-controls').style.display = 'block';
     document.getElementById('running-controls').style.display = 'none';
 }
