@@ -300,25 +300,19 @@ var Model = function(coeffs) {
 	this.coeffs = coeffs;
 }
 
-Model.prototype.isCorrect = function(row, col) {
-    var m = this.coeffs[0];
-    var a = this.coeffs[1];
-
-    var xored;
-    var rowr = row - m;
-    for (var i = 0; i < this.coeffs.length; i++) {
-        var colr = col - this.coeffs[i];
-        xored ^= colr >= 0 && rowr >= colr && (rowr - colr) % (m - a) === 0;
-	}
-    
-    return row === col || (xored && col < m);
+Model.prototype.initMatrix = function(matrix) {
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+        cell.isCorrect = cell.isActive;
+    });
+    model.updateIsCorrect(matrix);
+    model.updateTypes(matrix);
 }
 
-Model.prototype.update = function(matrix) {
+Model.prototype.updateTypes = function(matrix) {
     matrix.debug['cellCount'] = 0;
     var m = this.coeffs[0];
     matrix.forEach(function(cell) {
-        cell.isCorrect = model.isCorrect(cell.row, cell.col);
         if (cell.isCorrect && cell.col < m) {
             matrix.debug['cellCount']++;
         }
@@ -328,6 +322,24 @@ Model.prototype.update = function(matrix) {
             cell.type = cell.isActive ? 3 : 0;
         }
     });
+}
+
+Model.prototype.updateIsCorrect = function(matrix) {
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+        cell.isCorrect = cell.isActive;
+    });
+
+    var m = this.coeffs[0];
+    var others = this.coeffs.slice(1);
+    for (var i = m-2; i >= 0; i--) {
+        for (var ci = 0; ci < others.length; ci++) {
+            var c = others[ci];
+            for (var j = m; j < matrix.height; j++) {
+                matrix.board[j][c+i].isCorrect ^= matrix.board[j][m+i].isCorrect
+            }
+        }
+    }
 }
 
 var hash = window.location.hash;
@@ -343,10 +355,7 @@ var matrix;
 function createMatrix() {
     matrix = new Matrix(model.coeffs[0]*2-1, model.coeffs[0]*2-1);
     matrix.debug.count = 0;
-    matrix.forEach(function(cell) {
-        cell.isActive = cell.row === cell.col;
-    });
-    model.update(matrix);
+    model.initMatrix(matrix);
 }
 createMatrix();
 
@@ -375,8 +384,8 @@ document.onwheel = function(e) {
         }
         
     }
+    model.initMatrix(matrix);
     matrix.debug = debug;
-    model.update(matrix);
     matrix.render();
 }
 document.addEventListener('keydown', function(e) {
@@ -422,7 +431,7 @@ matrix.onmousedown = function(e) {
             selectionStart = null;
             selectionEnd = null;
         }
-        model.update(matrix);
+        model.updateTypes(matrix);
         matrix.debug['count']++;
     } else {
         selectionStart = e.col;
@@ -483,6 +492,7 @@ function merge(fromStart, b, c) {
     selectionEnd = fromEnd;
     selectionCurrent = to;
 }
+    
 
 var words = [];
 var W = 32;
@@ -573,7 +583,7 @@ function stepUserAlgorithm() {
 
     merge.apply(null, steps[++lastStep]);
 
-    model.update(matrix);
+    model.updateTypes(matrix);
     updateSelection();
     matrix.render();
 }
