@@ -295,7 +295,7 @@ Matrix.prototype.redo = function() {
 
 
         <script>
-initMatrix = function(matrix) {
+function initMatrix(matrix) {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
@@ -304,7 +304,7 @@ initMatrix = function(matrix) {
     updateTypes(matrix);
 }
 
-updateTypes = function(matrix) {
+function updateTypes(matrix) {
     matrix.debug['cellCount'] = 0;
     var m = this.coeffs[0];
     matrix.forEach(function(cell) {
@@ -319,7 +319,7 @@ updateTypes = function(matrix) {
     });
 }
 
-updateIsCorrect = function(matrix) {
+function updateIsCorrect(matrix) {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
