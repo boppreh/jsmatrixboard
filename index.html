@@ -305,12 +305,8 @@ function initMatrix(matrix) {
 }
 
 function updateTypes(matrix) {
-    matrix.debug['cellCount'] = 0;
     var m = this.coeffs[0];
     matrix.forEach(function(cell) {
-        if (cell.isCorrect && cell.col < m) {
-            matrix.debug['cellCount']++;
-        }
         if (cell.isCorrect) {
             cell.type = cell.isActive ? 1 : 2;
         } else {
@@ -335,6 +331,13 @@ function updateIsCorrect(matrix) {
             }
         }
     }
+
+    matrix.debug['cellCount'] = 0;
+    matrix.forEach(function(cell) {
+        if (cell.isCorrect && cell.col < m) {
+            matrix.debug['cellCount']++;
+        }
+    });
 }
 
 var hash = window.location.hash;
