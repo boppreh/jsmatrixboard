@@ -295,21 +295,16 @@ Matrix.prototype.redo = function() {
 
 
         <script>
-var Model = function(coeffs) {
-    coeffs.sort(function(a,b){return b - a});
-	this.coeffs = coeffs;
-}
-
-Model.prototype.initMatrix = function(matrix) {
+initMatrix = function(matrix) {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
     });
-    model.updateIsCorrect(matrix);
-    model.updateTypes(matrix);
+    updateIsCorrect(matrix);
+    updateTypes(matrix);
 }
 
-Model.prototype.updateTypes = function(matrix) {
+updateTypes = function(matrix) {
     matrix.debug['cellCount'] = 0;
     var m = this.coeffs[0];
     matrix.forEach(function(cell) {
@@ -324,7 +319,7 @@ Model.prototype.updateTypes = function(matrix) {
     });
 }
 
-Model.prototype.updateIsCorrect = function(matrix) {
+updateIsCorrect = function(matrix) {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
@@ -349,13 +344,13 @@ if (hash) {
 } else {
     coeffs = [20, 15, 10, 5, 0];
 }
-var model = new Model(coeffs);
+coeffs = coeffs.sort(function(a,b){return b - a});
 
 var matrix;
 function createMatrix() {
-    matrix = new Matrix(model.coeffs[0]*2-1, model.coeffs[0]*2-1);
+    matrix = new Matrix(coeffs[0]*2-1, coeffs[0]*2-1);
     matrix.debug.count = 0;
-    model.initMatrix(matrix);
+    initMatrix(matrix);
 }
 createMatrix();
 
@@ -364,28 +359,28 @@ var selectedCoeff = 1;
 document.onwheel = function(e) {
     var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
     if (e.shiftKey) {
-        selectedCoeff = Math.min(Math.max(0, selectedCoeff - delta), model.coeffs.length - 1);
+        selectedCoeff = Math.min(Math.max(0, selectedCoeff - delta), coeffs.length - 1);
     } else {
-        var n = model.coeffs[selectedCoeff] + delta;
-        var lowerBound = model.coeffs[selectedCoeff+1] + 1 || 0;
-        var upperBound = model.coeffs[selectedCoeff-1] - 1 || Infinity;
-        model.coeffs[selectedCoeff] = Math.min(Math.max(n, lowerBound), upperBound);
+        var n = coeffs[selectedCoeff] + delta;
+        var lowerBound = coeffs[selectedCoeff+1] + 1 || 0;
+        var upperBound = coeffs[selectedCoeff-1] - 1 || Infinity;
+        coeffs[selectedCoeff] = Math.min(Math.max(n, lowerBound), upperBound);
         if (selectedCoeff === 0) {
             createMatrix();
         }
     }
     var letters = "mabcdefghijkl";
     var debug = {};
-    for (var i = 0; i < model.coeffs.length; i++) {
+    for (var i = 0; i < coeffs.length; i++) {
         if (i === selectedCoeff) {
-            debug['*' + letters[i]] = model.coeffs[i];
+            debug['*' + letters[i]] = coeffs[i];
         } else {
-            debug[letters[i]] = model.coeffs[i];
+            debug[letters[i]] = coeffs[i];
         }
         
     }
-    model.initMatrix(matrix);
     matrix.debug = debug;
+    initMatrix(matrix);
     matrix.render();
 }
 document.addEventListener('keydown', function(e) {
@@ -431,7 +426,7 @@ matrix.onmousedown = function(e) {
             selectionStart = null;
             selectionEnd = null;
         }
-        model.updateTypes(matrix);
+        updateTypes(matrix);
         matrix.debug['count']++;
     } else {
         selectionStart = e.col;
@@ -583,7 +578,7 @@ function stepUserAlgorithm() {
 
     merge.apply(null, steps[++lastStep]);
 
-    model.updateTypes(matrix);
+    updateTypes(matrix);
     updateSelection();
     matrix.render();
 }
@@ -601,10 +596,10 @@ function runUserAlgorithm() {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
     });
-    var m = model.coeffs[0];
-    var a = model.coeffs[1];
-    var b = model.coeffs[2];
-    var c = model.coeffs[3];
+    var m = coeffs[0];
+    var a = coeffs[1];
+    var b = coeffs[2];
+    var c = coeffs[3];
     m2 = 2 * m - 2;
     try {
         eval(document.getElementById('user-algorithm').value);
