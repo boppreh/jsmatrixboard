@@ -334,7 +334,7 @@ function updateIsCorrect(matrix) {
 
     matrix.debug['cellCount'] = 0;
     matrix.forEach(function(cell) {
-        if (cell.isCorrect && cell.col < m) {
+        if (cell.isCorrect && cell.col < m && cell.row >= m) {
             matrix.debug['cellCount']++;
         }
     });
