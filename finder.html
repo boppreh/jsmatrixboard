@@ -32,10 +32,7 @@
     </head>
     <body>
         <div id="input-div" draggable="true">
-            <textarea cols=30 rows=10 id="user-algorithm">for (var i = m - 2; i >= 0; i--) {
-    merge(i+m, i+a);
-    merge(i+m, i);
-}</textarea>
+            <textarea cols=30 rows=10 id="user-algorithm"></textarea>
             <div id="start-controls">
                 <button onclick="runUserAlgorithm();">Apply</button>
             </div>
@@ -480,7 +477,15 @@ function isDuplicate(distance) {
 function highlightDuplicates() {
 	for (var col = 0; col < matrix.width; col++) {
 		var distance = col - selectionStart.col;
-		if (isDuplicate(distance)) {
+		if (distance != 0 && isDuplicate(distance)) {
+			var width = Math.min(selectionEnd.col - selectionStart.col, matrix.width - col);
+			//applyMerge(selectionStart.col, (selectionStart.col + width), col);
+			var srcStart = selectionStart.col;
+			var srcEnd = selectionStart.col + width;
+			var dstStart = col;
+			var dstEnd = col + width;
+			console.log('C[' + dstStart + ':' + dstEnd + '] ^= C[' + srcStart + ':' + srcEnd + ']');
+
 			forEachSelected(function(originalCell) {
 				if (!originalCell.type || originalCell.col + distance >= matrix.width)
 					return true;
