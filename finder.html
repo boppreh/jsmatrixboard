@@ -1,0 +1,660 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width" />
+        <title>Matrix Board Test</title>
+        <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font: 16px sans-serif;
+            color: #CCC;
+        }
+        canvas {
+            background-color: #EEE;
+            width: 100%;
+            height: 100%;
+            background-color: #456990;
+        }
+        #input-div {
+            padding: 10px;
+            position: fixed;
+            background-color: #426487;
+            display: flex;
+            flex-direction: column;
+            /*visibility: hidden;*/
+        }
+        </style>
+    </head>
+    <body>
+        <div id="input-div" draggable="true">
+            <textarea cols=30 rows=10 id="user-algorithm">for (var i = m - 2; i >= 0; i--) {
+    merge(i+m, i+a);
+    merge(i+m, i);
+}</textarea>
+            <div id="start-controls">
+                <button onclick="runUserAlgorithm();">Apply</button>
+            </div>
+            <div id="running-controls" style="display: none;">
+                <button id="btn-play-pause" onclick="playPauseUserAlgorithm();">Pause</button>
+                <button onclick="running = true; stepUserAlgorithm(); running=false;">Step</button>
+                <button onclick="stopUserAlgorithm();">Stop</button>
+            </div>
+        </div>
+        <canvas></canvas>
+        <script>
+"use strict";
+
+var Cell = function(row, col, type, background, primarySelection, secondarySelection) {
+    this.row = row || 0;
+    this.col = col || 0;
+    this.type = type || 0;
+    this.background = background || 0;
+    this.primarySelection = primarySelection || 0;
+    this.secondarySelection = secondarySelection || 0;
+}
+
+var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
+    this.width = width;
+    this.height = height || width;
+    this.clear(1);
+
+    this.canvas = canvas || document.getElementsByTagName('canvas')[0];
+    this.context = this.canvas.getContext('2d');
+
+    this.fillStyles = {0: 'none', 1: '#33DD33', 2: '#459990', 3: '#CC3333'};
+    this.backgrounds = {0: 'none', 1: '#426687'};
+    this.selectionStyle = {0: 'none', 1: 'rgb(220, 220, 220)', 2: 'rgba(220, 220, 220, 0.2)'};
+    this.borderStyle = '#CCC';
+
+    var self = this;
+
+    if (autoResize === undefined || autoResize) {
+        this.resize();
+        window.onresize = function() {
+            self.resize();
+            self.updateDimensions();
+            self.render(self.board);
+        };
+    }
+
+    this.history = [];
+    this.future = [];
+    if (ctrlZ === undefined || ctrlZ) {
+        document.addEventListener('keydown', function(e) {
+            if (e.keyCode === 90 && e.ctrlKey) {
+                if (e.shiftKey) {
+                    self.redo();
+                } else {
+                    self.undo();
+                }
+                self.render();
+            }
+        });
+    }
+
+    this.lastMovement = [null, null];
+    this.translateEventListener('onmousemove');
+    this.translateEventListener('onmousedown');
+    this.translateEventListener('onmouseup');
+    this.translateEventListener('onclick');
+
+    this.updateDimensions();
+    setTimeout(this.render.bind(this), 1);
+
+    this.debug = {};
+};
+
+Matrix.prototype.translateEventListener = function(eventName) {
+    var self = this;
+    this.canvas[eventName] = function(e) {
+        if (self[eventName]) {
+            e.col = self.xToCol(e.clientX);
+            e.row = self.yToRow(e.clientY);
+            e.cell = self.isValid(e.row, e.col) ? self.board[e.row][e.col] : undefined;
+            if (eventName == 'onmousemove') {
+                if (e.row == self.lastMovement[0] && e.col == self.lastMovement[1]) {
+                    return;
+                } else {
+                    self.lastMovement = [e.row, e.col];
+                }
+            }
+            self[eventName](e);
+            self.render();
+        }
+    };
+}
+
+Matrix.prototype.isValid = function(row, col) {
+    return row >= 0 && row < this.height && col >= 0 && col < this.height;
+};
+
+Matrix.prototype.xToCol = function(x) {
+    return Math.round((x - this.canvas.width/2) / this.cellSpace + this.width/2 - 0.5);
+};
+
+Matrix.prototype.yToRow = function(y) {
+    return Math.round((y - this.canvasPadding) / this.cellSpace - 0.5);
+};
+
+Matrix.prototype.resize = function() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+};
+
+Matrix.prototype.updateDimensions = function() {
+    this.width = this.board[0].length;
+    this.height = this.board.length;
+
+    this.canvasPadding = this.canvas.height / 20;
+    this.cellSpace = Math.min((this.canvas.width - 2*this.canvasPadding) / this.width, (this.canvas.height - 2*this.canvasPadding) / this.height);
+    if (this.cellSpace > 10) {
+        this.cellPadding = Math.max(1, this.cellSpace / 20);
+    } else {
+        this.cellPadding = 0;
+    }
+    this.cellBorder = this.cellSpace / 5;
+    this.cellSize = this.cellSpace - this.cellPadding * 2;
+};
+
+Matrix.prototype.render = function () {
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.context.save();
+    for (var col = 0; col < this.width; col++) {
+        var x = this.canvas.width/2 + (col-this.width/2)*this.cellSpace;
+
+        for (var row = 0; row < this.height; row++) {
+            var y = this.canvasPadding + row * this.cellSpace;
+
+            var cell = this.board[row][col];
+
+            if (cell.background !== 0) {
+                var fillStyle = this.backgrounds[cell.background];
+                this.context.fillStyle = fillStyle;
+                this.context.fillRect(x, y - this.cellPadding,
+                                 this.cellSpace, this.cellSpace);
+            }
+
+            if (cell.type !== 0) {
+                var fillStyle = this.fillStyles[cell.type];
+                
+                this.context.fillStyle = fillStyle;
+                this.context.fillRect(x + this.cellPadding, y,
+                                 this.cellSize, this.cellSize);
+                if (this.cellSpace > 10) {
+                    this.context.strokeStyle = this.borderStyle;
+                    this.context.strokeRect(x + this.cellPadding, y,
+                                       this.cellSize, this.cellSize);
+                }
+            }
+
+            if (cell.primarySelection) {
+                this.context.fillStyle = this.selectionStyle[cell.primarySelection];
+                this.context.beginPath();
+                this.context.moveTo(x+this.cellBorder+this.cellPadding, y+this.cellBorder);
+                this.context.lineTo(x+this.cellSize-this.cellBorder+this.cellPadding, y+this.cellBorder);
+                this.context.lineTo(x+this.cellBorder+this.cellPadding, y+this.cellSize-this.cellBorder);
+                this.context.fill();
+            }
+            if (cell.secondarySelection) {
+                this.context.fillStyle = this.selectionStyle[cell.secondarySelection];
+                this.context.beginPath();
+                this.context.moveTo(x+this.cellPadding+this.cellSize-this.cellBorder, y+this.cellSize-this.cellBorder);
+                this.context.lineTo(x+this.cellPadding+this.cellSize-this.cellBorder, y+this.cellBorder);
+                this.context.lineTo(x+this.cellPadding+this.cellBorder, y+this.cellSize-this.cellBorder);
+                this.context.fill();
+            }
+        }
+    }
+    this.context.restore();
+
+    this.context.save();
+    this.context.fillStyle = '#CCC';
+    this.context.font = '16px Verdana';
+    this.context.textAlign = 'right';
+    var yStart = 20;
+    var xStart = this.canvas.width - 10;
+    for (var prop in this.debug) {
+        this.context.fillText(prop + ": " + this.debug[prop], xStart, yStart);
+        yStart += 20;
+    }
+    this.context.restore();
+};
+
+Matrix.prototype.forEach = function(fn) {
+    for (var row = 0; row < this.height; row++) {
+        for (var col = 0; col < this.width; col++) {
+            fn(this.board[row][col]);
+        }
+    }
+};
+
+Matrix.prototype.clear = function(defaultType) {
+    this.board = [];
+    defaultType = defaultType === undefined ? 0 : defaultType;
+    for (var row = 0; row < this.height; row++) {
+        var line = [];
+        this.board.push(line);
+        for (var col = 0; col < this.width; col++) {
+            line.push(new Cell(row, col, defaultType));
+        }
+    }
+};
+
+Matrix.prototype.clearSelection = function() {
+    this.forEach(function(cell) {
+        cell.primarySelection = 0;
+        cell.secondarySelection = 0;
+    });
+};
+
+Matrix.prototype.save = function() {
+    var backup = [];
+    for (var row = 0; row < this.height; row++) {
+        var line = [];
+        backup.push(line);
+        for (var col = 0; col < this.width; col++) {
+            var backupCell = new Cell();
+            var cell = this.board[row][col];
+            for (var prop in cell) {
+                backupCell[prop] = cell[prop];
+            }
+            line.push(backupCell);
+        }
+    }
+
+    this.history.push(backup);
+    this.future = [];
+};
+
+Matrix.prototype.undo = function() {
+    if (this.history.length) {
+        this.future.push(this.board);
+        this.board = this.history.pop();
+    } else {
+        throw "No more history available for undo.";
+    }
+};
+
+Matrix.prototype.redo = function() {
+    if (this.future.length) {
+        this.history.push(this.board);
+        this.board = this.future.pop();
+    } else {
+        throw "No more history available for redo.";
+    }    
+};
+        </script>
+
+
+
+
+        <script>
+function initMatrix(matrix) {
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+        cell.isCorrect = cell.isActive;
+    });
+    updateIsCorrect(matrix);
+    updateTypes(matrix);
+}
+
+function updateTypes(matrix) {
+    var m = this.coeffs[0];
+    matrix.forEach(function(cell) {
+        if (cell.isCorrect) {
+            cell.type = cell.isActive ? 1 : 2;
+        } else {
+            cell.type = cell.isActive ? 3 : 0;
+        }
+    });
+}
+
+function updateIsCorrect(matrix) {
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+        cell.isCorrect = cell.isActive;
+    });
+
+    var m = this.coeffs[0];
+    var others = this.coeffs.slice(1);
+    for (var i = m-2; i >= 0; i--) {
+        for (var ci = 0; ci < others.length; ci++) {
+            var c = others[ci];
+            for (var j = m; j < matrix.height; j++) {
+                matrix.board[j][c+i].isCorrect ^= matrix.board[j][m+i].isCorrect
+            }
+        }
+    }
+
+    matrix.debug['cellCount'] = 0;
+    matrix.forEach(function(cell) {
+        if (cell.isCorrect && cell.col < m && cell.row >= m) {
+            matrix.debug['cellCount']++;
+        }
+    });
+}
+
+var hash = window.location.hash;
+var coeffs;
+if (hash) {
+    coeffs = window.location.hash.slice(1).split(',').map(Number);
+} else {
+    coeffs = [20, 15, 10, 5, 0];
+}
+coeffs = coeffs.sort(function(a,b){return b - a});
+
+var matrix;
+function createMatrix() {
+    matrix = new Matrix(coeffs[0]*2-1, coeffs[0]*2-1);
+    matrix.debug.count = 0;
+    initMatrix(matrix);
+}
+createMatrix();
+
+
+var selectedCoeff = 1;
+document.onwheel = function(e) {
+    var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
+    if (e.shiftKey) {
+        selectedCoeff = Math.min(Math.max(0, selectedCoeff - delta), coeffs.length - 1);
+    } else {
+        var n = coeffs[selectedCoeff] + delta;
+        var lowerBound = coeffs[selectedCoeff+1] + 1 || 0;
+        var upperBound = coeffs[selectedCoeff-1] - 1 || Infinity;
+        coeffs[selectedCoeff] = Math.min(Math.max(n, lowerBound), upperBound);
+        if (selectedCoeff === 0) {
+            createMatrix();
+        }
+    }
+    var letters = "mabcdefghijkl";
+    var debug = {};
+    for (var i = 0; i < coeffs.length; i++) {
+        if (i === selectedCoeff) {
+            debug['*' + letters[i]] = coeffs[i];
+        } else {
+            debug[letters[i]] = coeffs[i];
+        }
+        
+    }
+    matrix.debug = debug;
+    initMatrix(matrix);
+    matrix.render();
+}
+document.addEventListener('keydown', function(e) {
+    if (e.keyCode === 27) {
+        selectionStart = null;
+        selectionEnd = null;
+        matrix.clearSelection();
+        matrix.render();
+    }
+});
+
+function isInRange(value, start, end) {
+    return value >= Math.min(start, end) && value <= Math.max(start, end);
+}
+
+function findSrc(cell, srcStart, srcEnd, targetStart) {
+    var targetCol = cell.col - (targetStart - srcEnd);
+    if (isInRange(targetCol, srcStart, srcEnd)) {
+        return matrix.board[cell.row][targetCol];
+    } else {
+        return null;
+    }    
+}
+
+function applyMerge(srcStart, srcEnd, targetStart) {
+    matrix.forEach(function(cell) {
+        var src = findSrc(cell, srcStart, srcEnd, targetStart);
+        if (src) {
+            cell.isActive ^= src.isActive;
+        }
+    });
+}
+
+var selectionStart = null;
+var selectionEnd = null;
+var isSelecting = false;
+matrix.onmousedown = function(e) {
+	selectionStart = e.cell;
+	selectionEnd = e.cell;
+	isSelecting = true;
+	updateSelection();
+}
+matrix.onmousemove = function(e) {
+	if (isSelecting && e.cell) {
+		selectionEnd = e.cell;
+		updateSelection();
+	}
+}
+matrix.onmouseup = function(e) {
+	if (isSelecting && e.cell) {
+		selectionEnd = e.cell;
+		updateSelection();
+		isSelecting = false;
+		highlightDuplicates();
+	}
+}
+
+function forEachSelected(callback) {
+	var width = selectionEnd.col - selectionStart.col;
+	var height = selectionEnd.row - selectionStart.row;
+	var thickness = height - width;
+	for (var j = 0; j <= width; j++) {
+		for (var i = j; i <= j + thickness; i++) {
+			var cell = matrix.board[i + selectionStart.row][j + selectionStart.col];
+			if (!callback(cell)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+var selectionCount;
+function updateSelection() {
+	matrix.clearSelection();
+	selectionCount = 0;
+	forEachSelected(function(cell) {
+		cell.primarySelection = cell.type ? 1 : 2;
+		selectionCount += cell.type === 2;
+		return true;
+	});
+}
+
+function isDuplicate(distance) {
+	return forEachSelected(function(originalCell) {
+		if (!originalCell.type)
+			return true;
+
+		var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
+		return originalCell.primarySelection !== 1 || parallelCell.type !== 0;
+	});
+}
+
+function highlightDuplicates() {
+	for (var col = 0; col < matrix.width; col++) {
+		var distance = col - selectionStart.col;
+		if (isDuplicate(distance)) {
+			forEachSelected(function(originalCell) {
+				if (!originalCell.type)
+					return true;
+
+				var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
+				parallelCell.secondarySelection = originalCell.type ? 1 : 0;
+				return true;
+			});
+		}
+	}
+}
+        </script>
+
+
+
+        <script>
+function merge(fromStart, b, c) {
+    var to, fromEnd;
+    if (c === undefined) {
+        fromEnd = fromStart;
+        to = b;
+    } else {
+        fromEnd = b;
+        to = c;
+    }
+
+    rangeCount++;
+    bitCount += Math.abs(fromEnd - fromStart);
+    applyMerge(fromStart, fromEnd, to);
+
+    selectionStart = fromStart;
+    selectionEnd = fromEnd;
+    selectionCurrent = to;
+}
+    
+
+var words = [];
+var W = 32;
+function xor(wordDst, values) {
+    var groups = [];
+    for (var i = 0; i < values.length; i++) {
+        if (values[i] === null) {
+            continue;
+        }
+
+        var lastGroup = groups[groups.length-1];
+        if (lastGroup !== undefined && i === lastGroup[1] + 1 && values[i] === values[lastGroup[1]] + 1) {
+            lastGroup[1]++;
+        } else {
+            groups.push([i, i]);
+        }
+    }
+    
+    for (var i = 0; i < groups.length; i++) {
+        var group = groups[i];
+        var start = group[0];
+        var end = group[1];
+        merge(values[start], values[end], words[wordDst][start]);
+    }
+}
+function mask(values, mask) {
+    var result = [] ;
+    for (var i = 0; i < W; i++) {
+        result[i] = mask % 2 == 1 ? values[i] : null;
+        mask = (mask/2)|0; 
+    }
+    return result;
+}
+function lshift(values, amount) {
+    if (amount < 0) {
+        return rshift(values, -amount);
+    }
+    var result = [];
+    for (var i = 0; i < amount; i++) {
+        result.push(null);
+    }
+    for (var i = amount; i < W; i++) {
+        result.push(values[i - amount]);
+    }
+    return result;
+}
+function rshift(values, amount) {
+    if (amount < 0) {
+        return lshift(values, -amount);
+    }
+    var result = [];
+    for (var i = 0; i < W - amount; i++) {
+        result.push(values[i + amount]);
+    }
+    for (var i = W - amount; i < W; i++) {
+        result.push(null);
+    }
+    return result;
+}
+function lor(left, right) {
+    var result = [];
+    for (var i = 0; i < W; i++) {
+        result.push(left[i] !== null ? left[i] : right[i]);
+    }
+    return result;
+}
+
+var timeoutId = null;
+var lastStep = -1;
+var steps = [];
+var m2;
+
+function stepUserAlgorithm() {
+    if (lastStep >= steps.length) {
+        stopUserAlgorithm();
+        return;
+    }    
+
+    words = [];
+    for (var i = 0; i <= m2/W; i++) {
+        words.push([]);
+        for (var j = 0; j < W; j++) {
+            var index = j + i * W
+            words[i][j] = index <= m2 ? index : null;
+        }
+    }
+    var C = words;
+
+    merge.apply(null, steps[++lastStep]);
+
+    updateTypes(matrix);
+    updateSelection();
+    matrix.render();
+}
+function runUserAlgorithm() {
+    rangeCount = 0;
+    bitCount = 0;
+    document.getElementById('start-controls').style.display = 'none';
+    document.getElementById('running-controls').style.display = 'block';
+
+    steps = [];
+    lastStep = -1;
+    function merge(a, b, c) {
+        steps.push([a, b, c]);
+    }
+    matrix.forEach(function(cell) {
+        cell.isActive = cell.row === cell.col;
+    });
+    var m = coeffs[0];
+    var a = coeffs[1];
+    var b = coeffs[2];
+    var c = coeffs[3];
+    m2 = 2 * m - 2;
+    try {
+        eval(document.getElementById('user-algorithm').value);
+    } catch (e) {
+        alert(e);
+        throw e;
+    }
+    timeoutId = null;
+    playPauseUserAlgorithm();
+}
+function playPauseUserAlgorithm() {
+    if (timeoutId) {
+        clearInterval(timeoutId);
+        timeoutId = null;
+    } else {
+        timeoutId = setInterval(stepUserAlgorithm, Math.ceil(10 * 1000 / steps.length));
+        console.log(Math.ceil(10 * 1000 / steps.length));
+    }
+    
+    document.getElementById('btn-play-pause').innerHTML = timeoutId ? 'Pause' : 'Play';
+}
+function stopUserAlgorithm() {
+    clearInterval(timeoutId);
+    timeoutId = null;
+    document.getElementById('start-controls').style.display = 'block';
+    document.getElementById('running-controls').style.display = 'none';
+}
+        </script>
+    </body>
+</html>
