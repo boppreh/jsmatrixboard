@@ -482,7 +482,7 @@ function highlightDuplicates() {
 		var distance = col - selectionStart.col;
 		if (isDuplicate(distance)) {
 			forEachSelected(function(originalCell) {
-				if (!originalCell.type)
+				if (!originalCell.type || originalCell.col + distance >= matrix.width)
 					return true;
 
 				var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
