@@ -292,17 +292,17 @@ Matrix.prototype.redo = function() {
 
 
         <script>
-function initMatrix(matrix) {
+function initMatrix() {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
-    });
-    updateIsCorrect(matrix);
-    updateTypes(matrix);
+    })
+;    updateIsCorrect();
+    updateTypes();
 }
 
-function updateTypes(matrix) {
-    var m = this.coeffs[0];
+function updateTypes() {
+    var m = coeffs[0];
     matrix.forEach(function(cell) {
         if (cell.isCorrect) {
             cell.type = cell.isActive ? 1 : 2;
@@ -312,14 +312,14 @@ function updateTypes(matrix) {
     });
 }
 
-function updateIsCorrect(matrix) {
+function updateIsCorrect() {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
     });
 
-    var m = this.coeffs[0];
-    var others = this.coeffs.slice(1);
+    var m = coeffs[0];
+    var others = coeffs.slice(1);
     for (var i = m-2; i >= 0; i--) {
         for (var ci = 0; ci < others.length; ci++) {
             var c = others[ci];
@@ -350,7 +350,7 @@ var matrix;
 function createMatrix() {
     matrix = new Matrix(coeffs[0]*2-1, coeffs[0]*2-1);
     matrix.debug.count = 0;
-    initMatrix(matrix);
+    initMatrix();
 }
 createMatrix();
 
@@ -380,7 +380,7 @@ document.onwheel = function(e) {
         
     }
     matrix.debug = debug;
-    initMatrix(matrix);
+    initMatrix();
     matrix.render();
 }
 document.addEventListener('keydown', function(e) {
@@ -453,13 +453,10 @@ function forEachSelected(callback) {
 	return true;
 }
 
-var selectionCount;
 function updateSelection() {
 	matrix.clearSelection();
-	selectionCount = 0;
 	forEachSelected(function(cell) {
 		cell.primarySelection = cell.type ? 1 : 2;
-		selectionCount += cell.type === 2;
 		return true;
 	});
 }
@@ -502,26 +499,6 @@ function highlightDuplicates() {
 
 
         <script>
-function merge(fromStart, b, c) {
-    var to, fromEnd;
-    if (c === undefined) {
-        fromEnd = fromStart;
-        to = b;
-    } else {
-        fromEnd = b;
-        to = c;
-    }
-
-    rangeCount++;
-    bitCount += Math.abs(fromEnd - fromStart);
-    applyMerge(fromStart, fromEnd, to);
-
-    selectionStart = fromStart;
-    selectionEnd = fromEnd;
-    selectionCurrent = to;
-}
-    
-
 var words = [];
 var W = 32;
 function xor(wordDst, values) {
@@ -543,7 +520,7 @@ function xor(wordDst, values) {
         var group = groups[i];
         var start = group[0];
         var end = group[1];
-        merge(values[start], values[end], words[wordDst][start]);
+        applyMerge(values[start], values[end], words[wordDst][start]);
     }
 }
 function mask(values, mask) {
@@ -609,10 +586,9 @@ function stepUserAlgorithm() {
     }
     var C = words;
 
-    merge.apply(null, steps[++lastStep]);
+    applyMerge.apply(null, steps[++lastStep]);
 
-    updateTypes(matrix);
-    updateSelection();
+    updateTypes();
     matrix.render();
 }
 function runUserAlgorithm() {
@@ -634,8 +610,11 @@ function runUserAlgorithm() {
     var b = coeffs[2];
     var c = coeffs[3];
     m2 = 2 * m - 2;
+    var code = document.getElementById('user-algorithm').value;
+    code = code.replace(/C\[(\d+):(\d+)\] \^= C\[(\d+):(\d+)\]/g, 'merge($3, $4, $1);')
+    console.log(code);
     try {
-        eval(document.getElementById('user-algorithm').value);
+        eval(code);
     } catch (e) {
         alert(e);
         throw e;
