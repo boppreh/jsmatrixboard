@@ -499,145 +499,90 @@ function highlightDuplicates() {
 
 
         <script>
-var words = [];
-var W = 32;
-function xor(wordDst, values) {
-    var groups = [];
-    for (var i = 0; i < values.length; i++) {
-        if (values[i] === null) {
-            continue;
-        }
-
-        var lastGroup = groups[groups.length-1];
-        if (lastGroup !== undefined && i === lastGroup[1] + 1 && values[i] === values[lastGroup[1]] + 1) {
-            lastGroup[1]++;
-        } else {
-            groups.push([i, i]);
-        }
-    }
-    
-    for (var i = 0; i < groups.length; i++) {
-        var group = groups[i];
-        var start = group[0];
-        var end = group[1];
-        applyMerge(values[start], values[end], words[wordDst][start]);
-    }
-}
-function mask(values, mask) {
-    var result = [] ;
-    for (var i = 0; i < W; i++) {
-        result[i] = mask % 2 == 1 ? values[i] : null;
-        mask = (mask/2)|0; 
-    }
-    return result;
-}
-function lshift(values, amount) {
-    if (amount < 0) {
-        return rshift(values, -amount);
-    }
-    var result = [];
-    for (var i = 0; i < amount; i++) {
-        result.push(null);
-    }
-    for (var i = amount; i < W; i++) {
-        result.push(values[i - amount]);
-    }
-    return result;
-}
-function rshift(values, amount) {
-    if (amount < 0) {
-        return lshift(values, -amount);
-    }
-    var result = [];
-    for (var i = 0; i < W - amount; i++) {
-        result.push(values[i + amount]);
-    }
-    for (var i = W - amount; i < W; i++) {
-        result.push(null);
-    }
-    return result;
-}
-function lor(left, right) {
-    var result = [];
-    for (var i = 0; i < W; i++) {
-        result.push(left[i] !== null ? left[i] : right[i]);
-    }
-    return result;
+function rangemap(n, fn) {
+	var result = [];
+	for (var i = 0; i < n; i++) {
+		fn(i, result.push.bind(result));
+	}
+	return result;
 }
 
-var timeoutId = null;
-var lastStep = -1;
-var steps = [];
-var m2;
-
-function stepUserAlgorithm() {
-    if (lastStep >= steps.length) {
-        stopUserAlgorithm();
-        return;
-    }    
-
-    words = [];
-    for (var i = 0; i <= m2/W; i++) {
-        words.push([]);
-        for (var j = 0; j < W; j++) {
-            var index = j + i * W
-            words[i][j] = index <= m2 ? index : null;
-        }
-    }
-    var C = words;
-
-    applyMerge.apply(null, steps[++lastStep]);
-
-    updateTypes();
-    matrix.render();
-}
 function runUserAlgorithm() {
-    rangeCount = 0;
-    bitCount = 0;
-    document.getElementById('start-controls').style.display = 'none';
-    document.getElementById('running-controls').style.display = 'block';
+	var C = [];
+	var W = [];
+	var wordSize = 32;
 
-    steps = [];
-    lastStep = -1;
-    function merge(a, b, c) {
-        steps.push([a, b, c]);
-    }
-    matrix.forEach(function(cell) {
-        cell.isActive = cell.row === cell.col;
-    });
-    var m = coeffs[0];
-    var a = coeffs[1];
-    var b = coeffs[2];
-    var c = coeffs[3];
-    m2 = 2 * m - 2;
-    var code = document.getElementById('user-algorithm').value;
-    code = code.replace(/C\[(\d+):(\d+)\] \^= C\[(\d+):(\d+)\]/g, 'merge($3, $4, $1);')
-    console.log(code);
-    try {
-        eval(code);
-    } catch (e) {
-        alert(e);
-        throw e;
-    }
-    timeoutId = null;
-    playPauseUserAlgorithm();
-}
-function playPauseUserAlgorithm() {
-    if (timeoutId) {
-        clearInterval(timeoutId);
-        timeoutId = null;
-    } else {
-        timeoutId = setInterval(stepUserAlgorithm, Math.ceil(10 * 1000 / steps.length));
-        console.log(Math.ceil(10 * 1000 / steps.length));
-    }
-    
-    document.getElementById('btn-play-pause').innerHTML = timeoutId ? 'Pause' : 'Play';
-}
-function stopUserAlgorithm() {
-    clearInterval(timeoutId);
-    timeoutId = null;
-    document.getElementById('start-controls').style.display = 'block';
-    document.getElementById('running-controls').style.display = 'none';
+	function makeColumn(a) {
+		a.xor = function(b) {
+			return makeColumn(rangemap(matrix.height, function(i, push) {
+				if ((a.indexOf(i) !== -1) ^ (b.indexOf(i) !== -1)) {
+					push(i);
+				}
+			}));
+		}
+		return a;
+	}
+
+	function makeWordColumn(wa) {
+		wa.xor = function(wb) {
+			return makeWordColumn(rangemap(wordSize, function(i, push) {
+				push(wa[i].xor(wb[i]));
+			}));
+		}
+		wa.lshift = function(n) {
+			return makeWordColumn(rangemap(wordSize, function(i, push) {
+				push(i < n ? makeColumn([]) : wa[i-n]);
+			}));
+		}
+		wa.rshift = function(n) {
+			return makeWordColumn(rangemap(wordSize, function(i, push) {
+				push(i + n >= wa.length ? makeColumn([]) : wa[i+n]);
+			}));
+		}
+		wa.mask = function(mask) {
+			return makeWordColumn(rangemap(wordSize, function(i, push) {
+				push(Math.pow(2, i) & mask ? wa[i] : makeColumn([]));
+			}));
+		}
+		return wa;
+	}
+
+	// Divide rows into columns and those columns into words.
+	for (var col = 0; col < matrix.width; col++) {
+		C[col] = makeColumn([col]);
+		if (col % wordSize == 0) {
+			W.push(makeWordColumn([]))
+		}
+		W[W.length-1].push(C[col])
+	}
+	// Add empty columns to the last word to ensure size regularity.
+	for (var i = matrix.width % 32; i < 32; i++) {
+		W[W.length-1].push([])
+	}
+
+	var code = document.getElementById('user-algorithm').value;
+	code = code.replace(/(\w\[\d+\])\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
+	code = code.replace(/\s*\^\s*(.+?);?$/g, '.xor($1)');
+	code = code.replace(/\s*<<\s*(.+?);?$/g, '.lshift($1)');
+	code = code.replace(/\s*>>\s*(.+?);?$/g, '.rshift($1)');
+	code = code.replace(/\s*&\s*(.+?);?$/g, '.mask($1)');
+	console.log(code);
+	eval(code);
+
+	var isWordOriented = code.indexOf('W[') != -1;
+
+	for (var col = 0; col < matrix.width; col++) {
+		for (var row = 0; row < matrix.height; row++) {
+			if (isWordOriented) {
+				matrix.board[row][col].isActive = W[(col/32)|0][col%32].indexOf(row) != -1;
+			} else {
+				matrix.board[row][col].isActive = C[col].indexOf(row) != -1;
+			}
+		}
+	}
+
+	updateTypes();
+	matrix.render();
 }
         </script>
     </body>
