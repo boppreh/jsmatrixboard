@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width" />
+        <meta name="viewport" content="width=device-width">
         <title>Matrix Board Test</title>
         <style>
         html, body {
@@ -31,7 +31,7 @@
         </style>
     </head>
     <body>
-        <div id="input-div" draggable="true">
+        <div id="input-div">
             <textarea cols=30 rows=10 id="user-algorithm"></textarea>
             <div id="start-controls">
                 <button onclick="runUserAlgorithm();">Apply</button>
@@ -420,81 +420,81 @@ var selectionStart = null;
 var selectionEnd = null;
 var isSelecting = false;
 matrix.onmousedown = function(e) {
-	selectionStart = e.cell;
-	selectionEnd = e.cell;
-	isSelecting = true;
-	updateSelection();
+    selectionStart = e.cell;
+    selectionEnd = e.cell;
+    isSelecting = true;
+    updateSelection();
 }
 matrix.onmousemove = function(e) {
-	if (isSelecting && e.cell) {
-		selectionEnd = e.cell;
-		updateSelection();
-	}
+    if (isSelecting && e.cell) {
+        selectionEnd = e.cell;
+        updateSelection();
+    }
 }
 matrix.onmouseup = function(e) {
-	if (isSelecting && e.cell) {
-		selectionEnd = e.cell;
-		updateSelection();
-		isSelecting = false;
-		highlightDuplicates();
-	}
+    if (isSelecting && e.cell) {
+        selectionEnd = e.cell;
+        updateSelection();
+        isSelecting = false;
+        highlightDuplicates();
+    }
 }
 
 function forEachSelected(callback) {
-	var width = selectionEnd.col - selectionStart.col;
-	var height = selectionEnd.row - selectionStart.row;
-	var thickness = height - width;
-	for (var j = 0; j <= width; j++) {
-		for (var i = j; i <= j + thickness; i++) {
-			var cell = matrix.board[i + selectionStart.row][j + selectionStart.col];
-			if (!callback(cell)) {
-				return false;
-			}
-		}
-	}
-	return true;
+    var width = selectionEnd.col - selectionStart.col;
+    var height = selectionEnd.row - selectionStart.row;
+    var thickness = height - width;
+    for (var j = 0; j <= width; j++) {
+        for (var i = j; i <= j + thickness; i++) {
+            var cell = matrix.board[i + selectionStart.row][j + selectionStart.col];
+            if (!callback(cell)) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 function updateSelection() {
-	matrix.clearSelection();
-	forEachSelected(function(cell) {
-		cell.primarySelection = cell.type ? 1 : 2;
-		return true;
-	});
+    matrix.clearSelection();
+    forEachSelected(function(cell) {
+        cell.primarySelection = cell.type ? 1 : 2;
+        return true;
+    });
 }
 
 function isDuplicate(distance) {
-	return forEachSelected(function(originalCell) {
-		if (!originalCell.type)
-			return true;
+    return forEachSelected(function(originalCell) {
+        if (!originalCell.type)
+            return true;
 
-		var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
-		return originalCell.primarySelection !== 1 || parallelCell.type !== 0;
-	});
+        var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
+        return originalCell.primarySelection !== 1 || parallelCell.type !== 0;
+    });
 }
 
 function highlightDuplicates() {
-	for (var col = 0; col < matrix.width; col++) {
-		var distance = col - selectionStart.col;
-		if (distance != 0 && isDuplicate(distance)) {
-			var width = Math.min(selectionEnd.col - selectionStart.col, matrix.width - col);
-			//applyMerge(selectionStart.col, (selectionStart.col + width), col);
-			var srcStart = selectionStart.col;
-			var srcEnd = selectionStart.col + width;
-			var dstStart = col;
-			var dstEnd = col + width;
-			console.log('C[' + dstStart + ':' + dstEnd + '] ^= C[' + srcStart + ':' + srcEnd + ']');
+    for (var col = 0; col < matrix.width; col++) {
+        var distance = col - selectionStart.col;
+        if (distance != 0 && isDuplicate(distance)) {
+            var width = Math.min(selectionEnd.col - selectionStart.col, matrix.width - col);
+            //applyMerge(selectionStart.col, (selectionStart.col + width), col);
+            var srcStart = selectionStart.col;
+            var srcEnd = selectionStart.col + width;
+            var dstStart = col;
+            var dstEnd = col + width;
+            console.log('C[' + dstStart + ':' + dstEnd + '] ^= C[' + srcStart + ':' + srcEnd + ']');
 
-			forEachSelected(function(originalCell) {
-				if (!originalCell.type || originalCell.col + distance >= matrix.width)
-					return true;
+            forEachSelected(function(originalCell) {
+                if (!originalCell.type || originalCell.col + distance >= matrix.width)
+                    return true;
 
-				var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
-				parallelCell.secondarySelection = originalCell.type ? 1 : 0;
-				return true;
-			});
-		}
-	}
+                var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
+                parallelCell.secondarySelection = originalCell.type ? 1 : 0;
+                return true;
+            });
+        }
+    }
 }
         </script>
 
@@ -502,190 +502,203 @@ function highlightDuplicates() {
 
         <script>
 function rangemap(n, fn) {
-	var result = [];
-	for (var i = 0; i < n; i++) {
-		fn(i, result.push.bind(result));
-	}
-	return result;
+    var result = [];
+    for (var i = 0; i < n; i++) {
+        fn(i, result.push.bind(result));
+    }
+    return result;
 }
 
 function runUserAlgorithm() {
-	var C = [];
-	var W = [];
-	var wordSize = 32;
+    var C = [];
+    var W = [];
+    var wordSize = 32;
 
-	matrix.debug['bit xors'] = 0;
-	matrix.debug['word xors'] = 0;
-	matrix.debug['shifts'] = 0;
-	matrix.debug['masks'] = 0;
+    matrix.debug['bit xors'] = 0;
+    matrix.debug['word xors'] = 0;
+    matrix.debug['shifts'] = 0;
+    matrix.debug['masks'] = 0;
 
-	function makeColumn(a) {
-		a.xor = function(b) {
-			matrix.debug['bit xors']++;
-			return makeColumn(rangemap(matrix.height, function(i, push) {
-				if ((a.indexOf(i) !== -1) ^ (b.indexOf(i) !== -1)) {
-					push(i);
-				}
-			}));
-		}
-		return a;
-	}
+    function makeColumn(a) {
+        a.xor = function(b) {
+            matrix.debug['bit xors']++;
+            return makeColumn(rangemap(matrix.height, function(i, push) {
+                if ((a.indexOf(i) !== -1) ^ (b.indexOf(i) !== -1)) {
+                    push(i);
+                }
+            }));
+        }
+        return a;
+    }
 
-	function makeWordColumn(wa) {
-		wa.xor = function(wb) {
-			matrix.debug['word xors']++;
-			return makeWordColumn(rangemap(wordSize, function(i, push) {
-				push(wa[i].xor(wb[i]));
-			}));
-		}
-		wa.lshift = function(n) {
-			matrix.debug['shifts']++;
-			return makeWordColumn(rangemap(wordSize, function(i, push) {
-				push(i < n ? makeColumn([]) : wa[i-n]);
-			}));
-		}
-		wa.rshift = function(n) {
-			matrix.debug['shifts']++;
-			return makeWordColumn(rangemap(wordSize, function(i, push) {
-				push(i + n >= wa.length ? makeColumn([]) : wa[i+n]);
-			}));
-		}
-		wa.mask = function(mask) {
-			matrix.debug['masks']++;
-			return makeWordColumn(rangemap(wordSize, function(i, push) {
-				push(Math.pow(2, i) & mask ? wa[i] : makeColumn([]));
-			}));
-		}
-		return wa;
-	}
+    function makeWordColumn(wa) {
+        wa.xor = function(wb) {
+            matrix.debug['word xors']++;
+            return makeWordColumn(rangemap(wordSize, function(i, push) {
+                push(wa[i].xor(wb[i]));
+            }));
+        }
+        wa.lshift = function(n) {
+            matrix.debug['shifts']++;
+            return makeWordColumn(rangemap(wordSize, function(i, push) {
+                push(i < n ? makeColumn([]) : wa[i-n]);
+            }));
+        }
+        wa.rshift = function(n) {
+            matrix.debug['shifts']++;
+            return makeWordColumn(rangemap(wordSize, function(i, push) {
+                push(i + n >= wa.length ? makeColumn([]) : wa[i+n]);
+            }));
+        }
+        wa.mask = function(mask) {
+            matrix.debug['masks']++;
+            return makeWordColumn(rangemap(wordSize, function(i, push) {
+                push(Math.pow(2, i) & mask ? wa[i] : makeColumn([]));
+            }));
+        }
+        return wa;
+    }
 
-	// Divide rows into columns and those columns into words.
-	for (var col = 0; col < matrix.width; col++) {
-		C[col] = makeColumn([col]);
-		if (col % wordSize == 0) {
-			W.push(makeWordColumn([]))
-		}
-		W[W.length-1].push(C[col])
-	}
-	// Add empty columns to the last word to ensure size regularity.
-	for (var i = matrix.width % 32; i < 32; i++) {
-		W[W.length-1].push([])
-	}
+    // Divide rows into columns and those columns into words.
+    for (var col = 0; col < matrix.width; col++) {
+        C[col] = makeColumn([col]);
+        if (col % wordSize == 0) {
+            W.push(makeWordColumn([]))
+        }
+        W[W.length-1].push(C[col])
+    }
+    // Add empty columns to the last word to ensure size regularity.
+    for (var i = matrix.width % 32; i < 32; i++) {
+        W[W.length-1].push([])
+    }
 
-	var code = document.getElementById('user-algorithm').value;
-	code = code.replace(/\/\*.*?\*\//g, '');
-	code = code.replace(/(\w\[\d+\])\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
-	code = code.replace(/\s*\^\s*(.+?);?$/gm, '.xor($1)');
-	code = code.replace(/\s*<<\s*(\d+)/g, '.lshift($1)');
-	code = code.replace(/\s*>>\s*(\d+)/g, '.rshift($1)');
-	code = code.replace(/\s*&\s*(\w+)/g, '.mask($1)');
-	console.log(code);
-	eval(code);
+    var code = document.getElementById('user-algorithm').value;
+    code = code.replace(/\/\*.*?\*\//g, '');
+    code = code.replace(/(\w\[\d+\])\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
+    code = code.replace(/\s*\^\s*(.+?);?$/gm, '.xor($1)');
+    code = code.replace(/\s*<<\s*(\d+)/g, '.lshift($1)');
+    code = code.replace(/\s*>>\s*(\d+)/g, '.rshift($1)');
+    code = code.replace(/\s*&\s*(\w+)/g, '.mask($1)');
+    console.log(code);
+    eval(code);
 
-	var isWordOriented = code.indexOf('W[') != -1;
+    var isWordOriented = code.indexOf('W[') != -1;
 
-	for (var col = 0; col < matrix.width; col++) {
-		for (var row = 0; row < matrix.height; row++) {
-			if (isWordOriented) {
-				matrix.board[row][col].isActive = W[(col/32)|0][col%32].indexOf(row) != -1;
-			} else {
-				matrix.board[row][col].isActive = C[col].indexOf(row) != -1;
-			}
-		}
-	}
+    for (var col = 0; col < matrix.width; col++) {
+        for (var row = 0; row < matrix.height; row++) {
+            if (isWordOriented) {
+                matrix.board[row][col].isActive = W[(col/32)|0][col%32].indexOf(row) != -1;
+            } else {
+                matrix.board[row][col].isActive = C[col].indexOf(row) != -1;
+            }
+        }
+    }
 
-	matrix.debug['total word op'] = matrix.debug['word xors'] +	matrix.debug['shifts'] + matrix.debug['masks'];
+    matrix.debug['total word op'] = matrix.debug['word xors'] + matrix.debug['shifts'] + matrix.debug['masks'];
 
-	updateTypes();
-	matrix.render();
+    updateTypes();
+    matrix.render();
 }
 
 function makeBitAlgorithm() {
-	var code = []
-	var m = (matrix.width + 2) / 2;
-	for (var col = 0; col < matrix.width; col++) {
-		for (var row = 0; row < matrix.height; row++) {
-			if (matrix.board[row][col].isCorrect && col < m && row != col) {
-				code.push('C[' + col + '] ^= C[' + row + ']');
-			}
-		}
-	}
-	document.getElementById('user-algorithm').value = code.join('\n');
+    var code = []
+    var m = (matrix.width + 2) / 2;
+    for (var col = 0; col < matrix.width; col++) {
+        for (var row = 0; row < matrix.height; row++) {
+            if (matrix.board[row][col].isCorrect && col < m && row != col) {
+                code.push('C[' + col + '] ^= C[' + row + ']');
+            }
+        }
+    }
+    document.getElementById('user-algorithm').value = code.join('\n');
 }
+function listDiagonals() {
+    var diagStarts = [];
+    for (var i = 0; i < 32; i++) {
+        diagStarts.push([i, 0, 32-i-2]);
+    }
+    for (var i = 1; i < 32; i++) {
+        diagStarts.push([0, i, 32-i-2]);
+    }
+    return diagStarts;
+}
+function findCorrectRanges() {
+    var m = (matrix.width + 2) / 2;
+    var diagStarts = listDiagonals();
+    var ranges = [];
 
+    for (var blockCol = 0; blockCol < (matrix.width + 2) / 2; blockCol += 32) {
+        for (var blockRow = 0; blockRow < matrix.height; blockRow += 32) {
+
+            for (var i = 0; i < diagStarts.length; i++) {
+                var diagRow = diagStarts[i][0];
+                var diagCol = diagStarts[i][1];
+                var maxT = diagStarts[i][2];
+
+                var rangeStart = -1;
+                for (var t = 0; t <= maxT; t++) {
+                    var row = blockRow + diagRow + t;
+                    var col = blockCol + diagCol + t;
+
+                    if (row < matrix.height && col < matrix.width && matrix.board[row][col].isCorrect && row != col && col < m && t < maxT) {
+                        if (rangeStart === -1) {
+                            rangeStart = t;
+                        }
+                    } else if (rangeStart !== -1) {
+                        ranges.push({'blockCol': blockCol, 'blockRow': blockRow, 'diagRow': diagRow, 'diagCol': diagCol, 'range': [rangeStart, t], 'maxT': maxT})
+                        rangeStart = -1;
+                    }
+                }
+
+            }
+        }
+    }
+
+    return ranges;
+}
 function makeWordAlgorithm() {
-	var code = []
-	var m = (matrix.width + 2) / 2;
-	var temporary = {};
-	function temp(exp, line) {
-		if (temporary[exp]) {
-			temporary[exp].push(line);
-			return ' /*dup*/';
-		} else {
-			temporary[exp] = [line]
-			return '';
-		}
-	}
-	for (var col = 0; col < matrix.width; col++) {
-		for (var row = 0; row < matrix.height; row++) {
-			if (matrix.board[row][col].isCorrect && col < m && row != col) {
-				var isStart = col > 0 && !matrix.board[row-1][col-1].isCorrect;
-				if (row % 32 == 0 || col % 32 == 0 || isStart) {
-					var prefix = 'W[' + ((col/32)|0) + '] ^= ';
-					var suffix = 'W[' + ((row/32)|0) + ']';
+    var code = []
+    var temporary = {};
+    function temp(exp, line) {
+        if (temporary[exp]) {
+            temporary[exp].push(line);
+        } else {
+            temporary[exp] = [line];
+        }
+    }
 
-					var shift = (row % 32) - (col % 32);
-					if (shift > 0) {
-						suffix += ' >> ' + shift;
-						suffix += temp(suffix, code.length)
-					} else if (shift < 0) {
-						suffix += ' << ' + Math.abs(shift);
-						suffix += temp(suffix, code.length)
-					}
+    var ranges = findCorrectRanges();
+    for (var j = 0; j < ranges.length; j++) {
+        var r = ranges[j];
+        var prefix = 'W[' + (r.blockCol/32) + '] ^= ';
+        var suffix = 'W[' + (r.blockRow/32) + ']'
+        suffix += (r.diagRow > r.diagCol ? ' >> ' : ' << ') + (r.diagRow || r.diagCol);
+        temp(suffix, code.length);
+        if (r.range[1] - r.range[0] !== r.maxT) {
+            var mask = r.range[1] !== r.maxT ? Math.pow(2, r.range[1] + r.diagCol) - 1 : 0xFFFFFFFF;
+            mask -= Math.pow(2, r.range[0] + r.diagCol) - 1;
+            suffix += ' & 0b' + mask.toString(2);
+            temp(suffix, code.length);
+        }
+        code.push(prefix + suffix);
+    }
 
-					var mask = 0x100000000 - Math.pow(2, (row%32) - shift);
-					for (var i = Math.max(0, shift); i < 32 + Math.min(0, shift); i++) {
-						if (row + i < matrix.height && col + i < matrix.width && (!matrix.board[row + i][col + i].isCorrect || col + i >= m)) {
-							matrix.board[row + i][col + i].primarySelection = 1;
-							mask -= Math.pow(2, i);
-						}
-					}
-					/*
-					for (var i = 0; i < 32 && row + i < matrix.height && col + i < matrix.width; i++) {
-						if (!matrix.board[row + i][col + i].isCorrect || col + i >= m) {
-							var d = Math.pow(2, i);
-							if (d >= 1 && d <= mask) {
-								mask -= d;
-							}
-						}
-					}
-					*/
-					if (mask != 0xFFFFFFFF) {
-						suffix += ' & 0b' + (mask).toString(2);
-						suffix += temp(suffix, code.length);
-					}
+    var temporaryAssignments = [];
+    var count = 0;
+    for (var dup in temporary) {
+        var lines = temporary[dup];
+        if (lines.length === 1) {
+            continue;
+        }
+        temporaryAssignments.push('temp' + count + ' = ' + dup);
 
-					code.push(prefix + suffix);
-				}
-			}
-		}
-	}
-	var temporaryAssignments = [];
-	var count = 0;
-	for (var dup in temporary) {
-		var lines = temporary[dup];
-		if (lines.length === 1) {
-			continue;
-		}
-		temporaryAssignments.push('temp' + count + ' = ' + dup);
-
-		for (var i = 0; i < lines.length; i++) {
-			var line = lines[i];
-			code[line] = code[line].replace(dup, 'temp' + count)
-		}
-		count++;
-	}
-	document.getElementById('user-algorithm').value = temporaryAssignments.concat(code).join('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            code[line] = code[line].replace(dup, 'temp' + count)
+        }
+        count++;
+    }
+    document.getElementById('user-algorithm').value = temporaryAssignments.concat(code).join('\n');
 }
 makeWordAlgorithm();
         </script>
