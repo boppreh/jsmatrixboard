@@ -45,6 +45,7 @@
         <canvas></canvas>
         <script>
 "use strict";
+var canvas = document.getElementsByTagName('canvas')[0];
 
 var Cell = function(row, col, type, background, primarySelection, secondarySelection) {
     this.row = row || 0;
@@ -82,7 +83,7 @@ var Matrix = function(width, height, canvas, autoResize, ctrlZ) {
     this.history = [];
     this.future = [];
     if (ctrlZ === undefined || ctrlZ) {
-        document.addEventListener('keydown', function(e) {
+        this.canvas.addEventListener('keydown', function(e) {
             if (e.keyCode === 90 && e.ctrlKey) {
                 if (e.shiftKey) {
                     self.redo();
@@ -296,6 +297,7 @@ function initMatrix() {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
+        cell.background = cell.col % 32 == 0 || cell.row % 32 == 0 ? 1 : 0;
     })
 ;    updateIsCorrect();
     updateTypes();
@@ -356,7 +358,7 @@ createMatrix();
 
 
 var selectedCoeff = 1;
-document.onwheel = function(e) {
+canvas.onwheel = function(e) {
     var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
     if (e.shiftKey) {
         selectedCoeff = Math.min(Math.max(0, selectedCoeff - delta), coeffs.length - 1);
@@ -383,7 +385,7 @@ document.onwheel = function(e) {
     initMatrix();
     matrix.render();
 }
-document.addEventListener('keydown', function(e) {
+canvas.addEventListener('keydown', function(e) {
     if (e.keyCode === 27) {
         selectionStart = null;
         selectionEnd = null;
@@ -512,8 +514,14 @@ function runUserAlgorithm() {
 	var W = [];
 	var wordSize = 32;
 
+	matrix.debug['bit xors'] = 0;
+	matrix.debug['word xors'] = 0;
+	matrix.debug['shifts'] = 0;
+	matrix.debug['masks'] = 0;
+
 	function makeColumn(a) {
 		a.xor = function(b) {
+			matrix.debug['bit xors']++;
 			return makeColumn(rangemap(matrix.height, function(i, push) {
 				if ((a.indexOf(i) !== -1) ^ (b.indexOf(i) !== -1)) {
 					push(i);
@@ -525,21 +533,25 @@ function runUserAlgorithm() {
 
 	function makeWordColumn(wa) {
 		wa.xor = function(wb) {
+			matrix.debug['word xors']++;
 			return makeWordColumn(rangemap(wordSize, function(i, push) {
 				push(wa[i].xor(wb[i]));
 			}));
 		}
 		wa.lshift = function(n) {
+			matrix.debug['shifts']++;
 			return makeWordColumn(rangemap(wordSize, function(i, push) {
 				push(i < n ? makeColumn([]) : wa[i-n]);
 			}));
 		}
 		wa.rshift = function(n) {
+			matrix.debug['shifts']++;
 			return makeWordColumn(rangemap(wordSize, function(i, push) {
 				push(i + n >= wa.length ? makeColumn([]) : wa[i+n]);
 			}));
 		}
 		wa.mask = function(mask) {
+			matrix.debug['masks']++;
 			return makeWordColumn(rangemap(wordSize, function(i, push) {
 				push(Math.pow(2, i) & mask ? wa[i] : makeColumn([]));
 			}));
@@ -561,11 +573,12 @@ function runUserAlgorithm() {
 	}
 
 	var code = document.getElementById('user-algorithm').value;
+	code = code.replace(/\/\*.*?\*\//g, '');
 	code = code.replace(/(\w\[\d+\])\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
-	code = code.replace(/\s*\^\s*(.+?);?$/g, '.xor($1)');
-	code = code.replace(/\s*<<\s*(.+?);?$/g, '.lshift($1)');
-	code = code.replace(/\s*>>\s*(.+?);?$/g, '.rshift($1)');
-	code = code.replace(/\s*&\s*(.+?);?$/g, '.mask($1)');
+	code = code.replace(/\s*\^\s*(.+?);?$/gm, '.xor($1)');
+	code = code.replace(/\s*<<\s*(\d+)/g, '.lshift($1)');
+	code = code.replace(/\s*>>\s*(\d+)/g, '.rshift($1)');
+	code = code.replace(/\s*&\s*(\w+)/g, '.mask($1)');
 	console.log(code);
 	eval(code);
 
@@ -581,9 +594,100 @@ function runUserAlgorithm() {
 		}
 	}
 
+	matrix.debug['total word op'] = matrix.debug['word xors'] +	matrix.debug['shifts'] + matrix.debug['masks'];
+
 	updateTypes();
 	matrix.render();
 }
+
+function makeBitAlgorithm() {
+	var code = []
+	var m = (matrix.width + 2) / 2;
+	for (var col = 0; col < matrix.width; col++) {
+		for (var row = 0; row < matrix.height; row++) {
+			if (matrix.board[row][col].isCorrect && col < m && row != col) {
+				code.push('C[' + col + '] ^= C[' + row + ']');
+			}
+		}
+	}
+	document.getElementById('user-algorithm').value = code.join('\n');
+}
+
+function makeWordAlgorithm() {
+	var code = []
+	var m = (matrix.width + 2) / 2;
+	var temporary = {};
+	function temp(exp, line) {
+		if (temporary[exp]) {
+			temporary[exp].push(line);
+			return ' /*dup*/';
+		} else {
+			temporary[exp] = [line]
+			return '';
+		}
+	}
+	for (var col = 0; col < matrix.width; col++) {
+		for (var row = 0; row < matrix.height; row++) {
+			if (matrix.board[row][col].isCorrect && col < m && row != col) {
+				var isStart = col > 0 && !matrix.board[row-1][col-1].isCorrect;
+				if (row % 32 == 0 || col % 32 == 0 || isStart) {
+					var prefix = 'W[' + ((col/32)|0) + '] ^= ';
+					var suffix = 'W[' + ((row/32)|0) + ']';
+
+					var shift = (row % 32) - (col % 32);
+					if (shift > 0) {
+						suffix += ' >> ' + shift;
+						suffix += temp(suffix, code.length)
+					} else if (shift < 0) {
+						suffix += ' << ' + Math.abs(shift);
+						suffix += temp(suffix, code.length)
+					}
+
+					var mask = 0x100000000 - Math.pow(2, (row%32) - shift);
+					for (var i = Math.max(0, shift); i < 32 + Math.min(0, shift); i++) {
+						if (row + i < matrix.height && col + i < matrix.width && (!matrix.board[row + i][col + i].isCorrect || col + i >= m)) {
+							matrix.board[row + i][col + i].primarySelection = 1;
+							mask -= Math.pow(2, i);
+						}
+					}
+					/*
+					for (var i = 0; i < 32 && row + i < matrix.height && col + i < matrix.width; i++) {
+						if (!matrix.board[row + i][col + i].isCorrect || col + i >= m) {
+							var d = Math.pow(2, i);
+							if (d >= 1 && d <= mask) {
+								mask -= d;
+							}
+						}
+					}
+					*/
+					if (mask != 0xFFFFFFFF) {
+						suffix += ' & 0b' + (mask).toString(2);
+						suffix += temp(suffix, code.length);
+					}
+
+					code.push(prefix + suffix);
+				}
+			}
+		}
+	}
+	var temporaryAssignments = [];
+	var count = 0;
+	for (var dup in temporary) {
+		var lines = temporary[dup];
+		if (lines.length === 1) {
+			continue;
+		}
+		temporaryAssignments.push('temp' + count + ' = ' + dup);
+
+		for (var i = 0; i < lines.length; i++) {
+			var line = lines[i];
+			code[line] = code[line].replace(dup, 'temp' + count)
+		}
+		count++;
+	}
+	document.getElementById('user-algorithm').value = temporaryAssignments.concat(code).join('\n');
+}
+makeWordAlgorithm();
         </script>
     </body>
 </html>
