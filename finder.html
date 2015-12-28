@@ -623,7 +623,7 @@ function listDiagonals() {
     return diagStarts;
 }
 function findCorrectRanges() {
-    var m = (matrix.width + 2) / 2;
+    var m = (matrix.width + 1) / 2;
     var diagStarts = listDiagonals();
     var ranges = [];
 
@@ -670,11 +670,13 @@ function makeWordAlgorithm() {
     var ranges = findCorrectRanges();
     for (var j = 0; j < ranges.length; j++) {
         var r = ranges[j];
+        console.log(r.diagRow + r.range[0], r.diagRow + r.range[1], r.range[1] - r.range[0], r.maxT, matrix.width - r.blockRow)
         var prefix = 'W[' + (r.blockCol/32) + '] ^= ';
         var suffix = 'W[' + (r.blockRow/32) + ']'
         suffix += (r.diagRow > r.diagCol ? ' >> ' : ' << ') + (r.diagRow || r.diagCol);
         temp(suffix, code.length);
-        if (r.range[1] - r.range[0] !== r.maxT) {
+        if (r.range[1] - r.range[0] !== Math.min(r.maxT, matrix.width - r.blockRow)) {
+            console.log(r, Math.min(r.maxT, matrix.width - r.blockRow))
             var mask = r.range[1] !== r.maxT ? Math.pow(2, r.range[1] + r.diagCol) - 1 : 0xFFFFFFFF;
             mask -= Math.pow(2, r.range[0] + r.diagCol) - 1;
             suffix += ' & 0b' + mask.toString(2);
