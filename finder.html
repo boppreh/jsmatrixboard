@@ -633,12 +633,13 @@ function findCorrectRanges() {
                             startRange = t;
                         }
                         if (!isCorrect(blockRow + subRow + 1, blockCol + subCol + 1) || t == 31) {
-                            var isFull = (startRange == -colStart && t == 31) || (startRange == 0 && t == 31 - colStart);
+                            var isStartFull = startRange == 0 || startRange == -colStart;
+                            var isEndFull = t == 31 || t == 31 - colStart || blockRow + subRow == matrix.height - 1;
                             ranges.push({
                                 'blockCol': blockCol,
                                 'blockRow': blockRow,
                                 'colStart': colStart,
-                                'isFull': isFull,
+                                'isFull': isStartFull && isEndFull,
                                 'range': [startRange, t+1],
                             })
                         }
