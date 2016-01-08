@@ -612,49 +612,50 @@ function makeBitAlgorithm() {
     }
     document.getElementById('user-algorithm').value = code.join('\n');
 }
-function listDiagonals() {
-    var diagStarts = [];
-    for (var i = 0; i < 32; i++) {
-        diagStarts.push([i, 0, 32-i-2]);
-    }
-    for (var i = 1; i < 32; i++) {
-        diagStarts.push([0, i, 32-i-2]);
-    }
-    return diagStarts;
-}
 function findCorrectRanges() {
     var m = (matrix.width + 1) / 2;
-    var diagStarts = listDiagonals();
     var ranges = [];
+
+    function isCorrect(row, col) {
+        return row != col && col < m && row < matrix.height && col < matrix.width && matrix.board[row][col].isCorrect;
+    }
 
     for (var blockCol = 0; blockCol < (matrix.width + 2) / 2; blockCol += 32) {
         for (var blockRow = 0; blockRow < matrix.height; blockRow += 32) {
 
-            for (var i = 0; i < diagStarts.length; i++) {
-                var diagRow = diagStarts[i][0];
-                var diagCol = diagStarts[i][1];
-                var maxT = diagStarts[i][2];
-
-                var rangeStart = -1;
-                for (var t = 0; t <= maxT; t++) {
-                    var row = blockRow + diagRow + t;
-                    var col = blockCol + diagCol + t;
-
-                    if (row < matrix.height && col < matrix.width && matrix.board[row][col].isCorrect && row != col && col < m && t < maxT) {
-                        if (rangeStart === -1) {
-                            rangeStart = t;
+            for (var colStart = 31; colStart >= -32; colStart--) {
+                var startRange = -1;
+                for (var t = Math.max(0, -colStart); t < 32; t++) {
+                    var subRow = 0 + t;
+                    var subCol = colStart + t;
+                    if (isCorrect(blockRow + subRow, blockCol + subCol)) {
+                        if (startRange === -1) {
+                            startRange = t;
                         }
-                    } else if (rangeStart !== -1) {
-                        ranges.push({'blockCol': blockCol, 'blockRow': blockRow, 'diagRow': diagRow, 'diagCol': diagCol, 'range': [rangeStart, t], 'maxT': maxT})
-                        rangeStart = -1;
+                        if (!isCorrect(blockRow + subRow + 1, blockCol + subCol + 1) || t == 31) {
+                            var isFull = (startRange == -colStart && t == 31) || (startRange == 0 && t == 31 - colStart);
+                            ranges.push({
+                                'blockCol': blockCol,
+                                'blockRow': blockRow,
+                                'colStart': colStart,
+                                'isFull': isFull,
+                                'range': [startRange, t+1],
+                            })
+                        }
                     }
                 }
-
             }
         }
     }
 
     return ranges;
+}
+function repeatStr(str, n) {
+    var result = '';
+    for (var i = 0; i < n; i++) {
+        result += str;
+    }
+    return result;
 }
 function makeWordAlgorithm() {
     var code = []
@@ -668,18 +669,23 @@ function makeWordAlgorithm() {
     }
 
     var ranges = findCorrectRanges();
+
     for (var j = 0; j < ranges.length; j++) {
         var r = ranges[j];
-        console.log(r.diagRow + r.range[0], r.diagRow + r.range[1], r.range[1] - r.range[0], r.maxT, matrix.width - r.blockRow)
         var prefix = 'W[' + (r.blockCol/32) + '] ^= ';
-        var suffix = 'W[' + (r.blockRow/32) + ']'
-        suffix += (r.diagRow > r.diagCol ? ' >> ' : ' << ') + (r.diagRow || r.diagCol);
-        temp(suffix, code.length);
-        if (r.range[1] - r.range[0] !== Math.min(r.maxT, matrix.width - r.blockRow)) {
-            console.log(r, Math.min(r.maxT, matrix.width - r.blockRow))
-            var mask = r.range[1] !== r.maxT ? Math.pow(2, r.range[1] + r.diagCol) - 1 : 0xFFFFFFFF;
-            mask -= Math.pow(2, r.range[0] + r.diagCol) - 1;
-            suffix += ' & 0b' + mask.toString(2);
+        var suffix = 'W[' + (r.blockRow/32) + ']';
+
+        if (!r.isFull) {
+            var length = r.range[1] - r.range[0];
+            if (r.range[1] == 31) {
+                length = 32;
+            }
+            suffix += ' & 0b' + repeatStr('1', length) + repeatStr('0', r.range[0]);
+            temp(suffix, code.length);
+        }
+
+        if (r.colStart) {
+            suffix += (r.colStart > 0 ? ' << ' : ' >> ') + Math.abs(r.colStart);
             temp(suffix, code.length);
         }
         code.push(prefix + suffix);
