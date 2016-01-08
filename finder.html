@@ -574,7 +574,7 @@ function runUserAlgorithm() {
 
     var code = document.getElementById('user-algorithm').value;
     code = code.replace(/\/\*.*?\*\//g, '');
-    code = code.replace(/(\w\[\d+\])\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
+    code = code.replace(/(\w+(?:\[\d+\])?)\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
     code = code.replace(/\s*\^\s*(.+?);?$/gm, '.xor($1)');
     code = code.replace(/\s*<<\s*(\d+)/g, '.lshift($1)');
     code = code.replace(/\s*>>\s*(\d+)/g, '.rshift($1)');
@@ -623,7 +623,7 @@ function findCorrectRanges() {
     for (var blockCol = 0; blockCol < (matrix.width + 2) / 2; blockCol += 32) {
         for (var blockRow = 0; blockRow < matrix.height; blockRow += 32) {
 
-            for (var colStart = 31; colStart >= -32; colStart--) {
+            for (var colStart = -32; colStart < 32; colStart++) {
                 var startRange = -1;
                 for (var t = Math.max(0, -colStart); t < 32; t++) {
                     var subRow = 0 + t;
@@ -641,7 +641,7 @@ function findCorrectRanges() {
                                 'colStart': colStart,
                                 'isFull': isStartFull && isEndFull,
                                 'range': [startRange, t+1],
-                            })
+                            });
                         }
                     }
                 }
