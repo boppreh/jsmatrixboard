@@ -434,7 +434,7 @@ function makeWordAlgorithm() {
             if (r.range[1] == 31) {
                 length = 32;
             }
-            suffix += ' & 0b' + repeatStr('1', length) + repeatStr('0', r.range[0]);
+            suffix = '(' + suffix + ' & 0b' + repeatStr('1', length) + repeatStr('0', r.range[0]) + ')';
             temp(suffix, code.length);
         }
 
