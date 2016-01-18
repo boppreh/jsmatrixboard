@@ -460,6 +460,10 @@ function makeWordAlgorithm() {
         }
         count++;
     }
+    var m = (matrix.width + 1) / 2;
+    if (m % 32 != 0) {
+        code.push('W[' + ((m/32)|0) + '] &= 0b' + repeatStr('1', m%32));
+    }
     document.getElementById('user-algorithm').value = temporaryAssignments.concat(code).join('\n');
 }
 makeWordAlgorithm();
