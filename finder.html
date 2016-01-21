@@ -373,6 +373,8 @@ function findCorrectRanges() {
         return row != col && col < m && row < matrix.height && col < matrix.width && matrix.board[row][col].isCorrect;
     }
 
+    var columns = [];
+    var pairsCount = {};
     for (var blockCol = 0; blockCol < (matrix.width + 2) / 2; blockCol += 32) {
         for (var blockRow = 0; blockRow < matrix.height; blockRow += 32) {
 
@@ -395,12 +397,42 @@ function findCorrectRanges() {
                                 'isFull': isStartFull && isEndFull,
                                 'range': [startRange, t+1],
                             });
+
+                            var startColumn = blockCol + startRange + colStart;
+                            if (columns[startColumn] === undefined) {
+                                columns[startColumn] = [];
+                            }
+                            columns[startColumn].push({row: blockRow/32, colStart: colStart});
                         }
                     }
                 }
             }
         }
+        for (var startColumn = blockCol; startColumn < blockCol + 32; startColumn++) {
+            var columnLines = {};
+            var entries = columns[startColumn];
+            if (entries === undefined) continue;
+            var minColStart = Infinity;
+            for (var i = 0; i < entries.length; i++) {
+                minColStart = Math.min(minColStart, entries[i].colStart);
+            }
+            var xors = [];
+            for (var i = 0; i < entries.length; i++) {
+                var shift = entries[i].colStart - minColStart;
+                if (Math.abs(shift) >= 32) continue;
+                var line = [entries[i].row, shift];
+                for (var otherLine in columnLines) {
+                    var pair = [otherLine, line];
+                    if (pairsCount[pair] === undefined) {
+                        pairsCount[pair] = []
+                    }
+                    pairsCount[pair].push([startColumn, minColStart]);
+                }
+                columnLines[line] = (columnLines[pair] || 0) + 1;
+            }
+        }
     }
+    console.table(pairsCount);
 
     return ranges;
 }
@@ -429,17 +461,18 @@ function makeWordAlgorithm() {
         var prefix = 'W[' + (r.blockCol/32) + '] ^= ';
         var suffix = 'W[' + (r.blockRow/32) + ']';
 
-        if (!r.isFull) {
-            var length = r.range[1] - r.range[0];
-            var mask = repeatStr('1', length) + repeatStr('0', r.range[0]);
-            suffix = '(' + suffix + ' & 0b' + mask + ')';
-            temp(suffix, code.length);
-        }
-
         if (r.colStart) {
             suffix += (r.colStart > 0 ? ' << ' : ' >> ') + Math.abs(r.colStart);
             temp(suffix, code.length);
         }
+
+        if (!r.isFull) {
+            var length = r.range[1] - r.range[0];
+            var mask = repeatStr('1', length) + repeatStr('0', r.range[0] + r.colStart);
+            suffix = '(' + suffix + ' & 0b' + mask + ')';
+            temp(suffix, code.length);
+        }
+
         code.push(prefix + suffix);
     }
 
