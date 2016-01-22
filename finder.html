@@ -86,6 +86,7 @@ function updateIsCorrect() {
 
     matrix.debug['cellCount'] = 0;
     matrix.forEach(function(cell) {
+        cell.isCorrect &= cell.col < m;
         if (cell.isCorrect && cell.col < m && cell.row >= m) {
             matrix.debug['cellCount']++;
         }
@@ -190,7 +191,9 @@ function runUserAlgorithm() {
 
     var code = document.getElementById('user-algorithm').value;
     code = code.replace(/\/\*.*?\*\//g, '');
-    code = code.replace(/(\w+(?:\[\d+\])?)\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
+    code = code.replace(/(\w+(?:\[.+?\])?)\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
+    console.log(code)
+    code = code.replace(/\s*\^\s*\(/g, '.xor(');
     code = code.replace(/\s*\^\s*(.+?);?$/gm, '.xor($1)');
     code = code.replace(/\s*<<\s*(\d+)/g, '.lshift($1)');
     code = code.replace(/\s*>>\s*(\d+)/g, '.rshift($1)');
@@ -251,7 +254,7 @@ function findCorrectXorPairs() {
                         if (!isCorrect(blockRow + subRow + 1, blockCol + subCol + 1) || t == 31) {
                             var isStartFull = startRange == 0 || startRange == -colStart;
                             var isEndFull = t == 31 || t == 31 - colStart || blockRow + subRow == matrix.height - 1;
-                            var line = {
+                            var diag = {
                                 'blockCol': blockCol,
                                 'blockRow': blockRow,
                                 'colStart': colStart,
@@ -263,8 +266,8 @@ function findCorrectXorPairs() {
                             if (columns[startColumn] === undefined) {
                                 columns[startColumn] = [];
                             }
-                            columns[startColumn].push(line);
-                            line.column = columns[startColumn];
+                            columns[startColumn].push(diag);
+                            diag.column = columns[startColumn];
                         }
                     }
                 }
@@ -277,8 +280,8 @@ function findCorrectXorPairs() {
         var column = columns[colNumber]
         var minColStart = Infinity;
         for (var j = 0; j < column.length; j++) {
-            var line = column[j];
-            minColStart = Math.min(minColStart, line.colStart);
+            var diag = column[j];
+            minColStart = Math.min(minColStart, diag.colStart);
         }
         for (var j = 0; j < column.length; j++) {
             column[j].minColStart = minColStart;
@@ -310,9 +313,15 @@ function makeWordAlgorithm() {
     for (var key in allPairs) {
         var a = allPairs[key][0][0];
         var b = allPairs[key][0][1];
-        [a.blockRow/32, a.colStart-a.minColStart,
-                            b.blockRow/32, b.colStart-b.minColStart]
-        code.push('temp_' + key.replace(/,/g, '_') + ' = (W[' + a.blockRow/32 + ']<<' + (a.colStart-a.minColStart) + ') ^ ' + '(W[' + b.blockRow/32 + ']<<' + (b.colStart-b.minColStart) + ')');
+        var tempName = 'temp_' + key.replace(/,/g, '_')
+        code.push(tempName + ' = (W[' + a.blockRow/32 + ']<<' + (a.colStart-a.minColStart) + ') ^ ' + '(W[' + b.blockRow/32 + ']<<' + (b.colStart-b.minColStart) + ')');
+
+        var pairs = allPairs[key];
+        for (var i = 0; i < pairs.length; i++) {
+            var a = pairs[i][0];
+            var shift = a.minColStart;
+            code.push('W[' + a.blockCol/32 + '] ^= ' + tempName + (shift > 0 ? ' << ' : ' >> ') + Math.abs(shift));
+        }
     }
 
     document.getElementById('user-algorithm').value = code.join('\n');
