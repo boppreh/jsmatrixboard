@@ -46,11 +46,23 @@
         <script src="matrixboard.js" type="text/javascript"></script>
 
         <script>
+function getParameterByName(name, _default) {
+    // http://stackoverflow.com/a/901144/252218
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? _default : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+var coeffs = getParameterByName('p', '20,15,10,5,0').split(',').map(Number);
+coeffs = coeffs.sort(function(a,b){return b - a});
+
+var WORD_SIZE = Number(getParameterByName('w', '32'));
+
 function initMatrix() {
     matrix.forEach(function(cell) {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
-        cell.background = cell.col % 32 == 0 || cell.row % 32 == 0 ? 1 : 0;
+        cell.background = cell.col % WORD_SIZE == 0 || cell.row % WORD_SIZE == 0 ? 1 : 0;
     })
 ;    updateIsCorrect();
     updateTypes();
@@ -93,15 +105,6 @@ function updateIsCorrect() {
     });
 }
 
-var hash = window.location.hash;
-var coeffs;
-if (hash) {
-    coeffs = window.location.hash.slice(1).split(',').map(Number);
-} else {
-    coeffs = [20, 15, 10, 5, 0];
-}
-coeffs = coeffs.sort(function(a,b){return b - a});
-
 var matrix;
 function createMatrix() {
     matrix = new Matrix(coeffs[0]*2-1, coeffs[0]*2-1);
@@ -126,7 +129,6 @@ function rangemap(n, fn) {
 function runUserAlgorithm() {
     var C = [];
     var W = [];
-    var wordSize = 32;
 
     matrix.debug['bit xors'] = 0;
     matrix.debug['word xors'] = 0;
@@ -148,28 +150,25 @@ function runUserAlgorithm() {
     function makeWordColumn(wa) {
         wa.xor = function(wb) {
             matrix.debug['word xors']++;
-            return makeWordColumn(rangemap(wordSize, function(i, push) {
-                if (wa[i] === undefined) {
-                    console.log(wa, i)
-                }
+            return makeWordColumn(rangemap(WORD_SIZE, function(i, push) {
                 push(wa[i].xor(wb[i]));
             }));
         }
         wa.lshift = function(n) {
             matrix.debug['shifts']++;
-            return makeWordColumn(rangemap(wordSize, function(i, push) {
+            return makeWordColumn(rangemap(WORD_SIZE, function(i, push) {
                 push(i < n ? makeColumn([]) : wa[i-n]);
             }));
         }
         wa.rshift = function(n) {
             matrix.debug['shifts']++;
-            return makeWordColumn(rangemap(wordSize, function(i, push) {
+            return makeWordColumn(rangemap(WORD_SIZE, function(i, push) {
                 push(i + n >= wa.length ? makeColumn([]) : wa[i+n]);
             }));
         }
         wa.mask = function(mask) {
             matrix.debug['masks']++;
-            return makeWordColumn(rangemap(wordSize, function(i, push) {
+            return makeWordColumn(rangemap(WORD_SIZE, function(i, push) {
                 push(Math.pow(2, i) & mask ? wa[i] : makeColumn([]));
             }));
         }
@@ -179,20 +178,19 @@ function runUserAlgorithm() {
     // Divide rows into columns and those columns into words.
     for (var col = 0; col < matrix.width; col++) {
         C[col] = makeColumn([col]);
-        if (col % wordSize == 0) {
+        if (col % WORD_SIZE == 0) {
             W.push(makeWordColumn([]))
         }
         W[W.length-1].push(C[col])
     }
     // Add empty columns to the last word to ensure size regularity.
-    for (var i = matrix.width % 32; i < 32; i++) {
+    for (var i = matrix.width % WORD_SIZE; i < WORD_SIZE; i++) {
         W[W.length-1].push(makeColumn([]))
     }
 
     var code = document.getElementById('user-algorithm').value;
     code = code.replace(/\/\*.*?\*\//g, '');
     code = code.replace(/(\w+(?:\[.+?\])?)\s*(\^|<<|>>|&)=/g, '$1 = $1 $2 ');
-    console.log(code)
     code = code.replace(/\s*\^\s*\(/g, '.xor(');
     code = code.replace(/\s*\^\s*(.+?);?$/gm, '.xor($1)');
     code = code.replace(/\s*<<\s*(\d+)/g, '.lshift($1)');
@@ -206,7 +204,7 @@ function runUserAlgorithm() {
     for (var col = 0; col < matrix.width; col++) {
         for (var row = 0; row < matrix.height; row++) {
             if (isWordOriented) {
-                matrix.board[row][col].isActive = W[(col/32)|0][col%32].indexOf(row) != -1;
+                matrix.board[row][col].isActive = W[(col/WORD_SIZE)|0][col%WORD_SIZE].indexOf(row) != -1;
             } else {
                 matrix.board[row][col].isActive = C[col].indexOf(row) != -1;
             }
@@ -231,75 +229,6 @@ function makeBitAlgorithm() {
     }
     document.getElementById('user-algorithm').value = code.join('\n');
 }
-function findCorrectXorPairs() {
-    var m = (matrix.width + 1) / 2;
-
-    function isCorrect(row, col) {
-        return row != col && col < m && row < matrix.height && col < matrix.width && matrix.board[row][col].isCorrect;
-    }
-
-    var columns = {};
-    for (var blockCol = 0; blockCol < (matrix.width + 2) / 2; blockCol += 32) {
-        for (var blockRow = 0; blockRow < matrix.height; blockRow += 32) {
-
-            for (var colStart = -32; colStart < 32; colStart++) {
-                var startRange = -1;
-                for (var t = Math.max(0, -colStart); t < 32; t++) {
-                    var subRow = 0 + t;
-                    var subCol = colStart + t;
-                    if (isCorrect(blockRow + subRow, blockCol + subCol)) {
-                        if (startRange === -1) {
-                            startRange = t;
-                        }
-                        if (!isCorrect(blockRow + subRow + 1, blockCol + subCol + 1) || t == 31) {
-                            var isStartFull = startRange == 0 || startRange == -colStart;
-                            var isEndFull = t == 31 || t == 31 - colStart || blockRow + subRow == matrix.height - 1;
-                            var diag = {
-                                'blockCol': blockCol,
-                                'blockRow': blockRow,
-                                'colStart': colStart,
-                                'isFull': isStartFull && isEndFull,
-                                'range': [startRange, t+1],
-                                'column': startColumn,
-                            };
-                            var startColumn = blockCol + startRange + colStart;
-                            if (columns[startColumn] === undefined) {
-                                columns[startColumn] = [];
-                            }
-                            columns[startColumn].push(diag);
-                            diag.column = columns[startColumn];
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    var allPairs = {}
-    for (var colNumber in columns) {
-        var column = columns[colNumber]
-        var minColStart = Infinity;
-        for (var j = 0; j < column.length; j++) {
-            var diag = column[j];
-            minColStart = Math.min(minColStart, diag.colStart);
-        }
-        for (var j = 0; j < column.length; j++) {
-            column[j].minColStart = minColStart;
-            for (var k = 0; k < j; k++) {
-                var info = [column[k].blockRow/32, column[k].colStart-minColStart,
-                            column[j].blockRow/32, column[j].colStart-minColStart];
-                if (allPairs[info] === undefined) {
-                    allPairs[info] = [];
-                    // Save for later because JS dictionaries convert keys to strings.
-                    allPairs[info].info = info
-                }
-                allPairs[info].push([column[j], column[k]]);
-            }
-        }
-    }
-
-    return allPairs;
-}
 function repeatStr(str, n) {
     var result = '';
     for (var i = 0; i < n; i++) {
@@ -309,19 +238,40 @@ function repeatStr(str, n) {
 }
 function makeWordAlgorithm() {
     var code = [];
-    var allPairs = findCorrectXorPairs();
-    for (var key in allPairs) {
-        var a = allPairs[key][0][0];
-        var b = allPairs[key][0][1];
-        var tempName = 'temp_' + key.replace(/,/g, '_')
-        code.push(tempName + ' = (W[' + a.blockRow/32 + ']<<' + (a.colStart-a.minColStart) + ') ^ ' + '(W[' + b.blockRow/32 + ']<<' + (b.colStart-b.minColStart) + ')');
-
-        var pairs = allPairs[key];
-        for (var i = 0; i < pairs.length; i++) {
-            var a = pairs[i][0];
-            var shift = a.minColStart;
-            code.push('W[' + a.blockCol/32 + '] ^= ' + tempName + (shift > 0 ? ' << ' : ' >> ') + Math.abs(shift));
+    function addOp(op, dst, src, shift, srcShift, prefix) {
+        if (Math.abs(shift+(srcShift||0)) >= WORD_SIZE) {
+            return;
         }
+        var line = (prefix || '') + dst + ' ' + op + '= ' + src
+        if (shift < 0) {
+            line += ' >> ' + Math.abs(shift);
+        } else if (shift > 0) {
+            line += ' << ' + shift;
+        }
+        code.push(line);
+    }
+    var m = coeffs[0];
+    var nWords = matrix.width/WORD_SIZE;
+    code.push('for (var i = ' + Math.floor(nWords) + '; i >= ' + Math.ceil(nWords/2) + '; i--) {');
+    code.push('\tT = W[i]');
+    var offset = m % WORD_SIZE;
+    for (var i = 1; i < coeffs.length; i++) {
+        var shift = coeffs[i] - offset;
+        for (var j = nWords|0; j >= -nWords; j--) {
+            addOp('^', 'W[i-' + Math.floor(nWords/2+j) + ']', 'T', shift+j*WORD_SIZE, 0, '\t');
+        }
+    }
+    code.push('}');
+
+    addOp('', 'T', 'W[' + Math.floor(nWords/2) + ']', -offset);
+    for (var i = 1; i < coeffs.length; i++) {
+        for (var j = nWords|0; j >= 0; j--) {
+            addOp('^', 'W[' + j + ']', 'T', coeffs[i]-j*WORD_SIZE, -offset);
+        }
+    }
+
+    if (m % WORD_SIZE !== 0) {
+        code.push('W[' + ((m/WORD_SIZE)|0) + '] &= 0b' + repeatStr('1', m%WORD_SIZE));
     }
 
     document.getElementById('user-algorithm').value = code.join('\n');
