@@ -108,147 +108,6 @@ function createMatrix() {
     initMatrix();
 }
 createMatrix();
-
-
-var selectedCoeff = 1;
-canvas.onwheel = function(e) {
-    var delta = (e.deltaY || e.deltaX) < 0 ? 1 : -1;
-    if (e.shiftKey) {
-        selectedCoeff = Math.min(Math.max(0, selectedCoeff - delta), coeffs.length - 1);
-    } else {
-        var n = coeffs[selectedCoeff] + delta;
-        var lowerBound = coeffs[selectedCoeff+1] + 1 || 0;
-        var upperBound = coeffs[selectedCoeff-1] - 1 || Infinity;
-        coeffs[selectedCoeff] = Math.min(Math.max(n, lowerBound), upperBound);
-        if (selectedCoeff === 0) {
-            createMatrix();
-        }
-    }
-    var letters = "mabcdefghijkl";
-    var debug = {};
-    for (var i = 0; i < coeffs.length; i++) {
-        if (i === selectedCoeff) {
-            debug['*' + letters[i]] = coeffs[i];
-        } else {
-            debug[letters[i]] = coeffs[i];
-        }
-        
-    }
-    matrix.debug = debug;
-    initMatrix();
-    matrix.render();
-}
-canvas.addEventListener('keydown', function(e) {
-    if (e.keyCode === 27) {
-        selectionStart = null;
-        selectionEnd = null;
-        matrix.clearSelection();
-        matrix.render();
-    }
-});
-
-function isInRange(value, start, end) {
-    return value >= Math.min(start, end) && value <= Math.max(start, end);
-}
-
-function findSrc(cell, srcStart, srcEnd, targetStart) {
-    var targetCol = cell.col - (targetStart - srcEnd);
-    if (isInRange(targetCol, srcStart, srcEnd)) {
-        return matrix.board[cell.row][targetCol];
-    } else {
-        return null;
-    }    
-}
-
-function applyMerge(srcStart, srcEnd, targetStart) {
-    matrix.forEach(function(cell) {
-        var src = findSrc(cell, srcStart, srcEnd, targetStart);
-        if (src) {
-            cell.isActive ^= src.isActive;
-        }
-    });
-}
-
-var selectionStart = null;
-var selectionEnd = null;
-var isSelecting = false;
-matrix.onmousedown = function(e) {
-    selectionStart = e.cell;
-    selectionEnd = e.cell;
-    isSelecting = true;
-    updateSelection();
-}
-matrix.onmousemove = function(e) {
-    if (isSelecting && e.cell) {
-        selectionEnd = e.cell;
-        updateSelection();
-    }
-}
-matrix.onmouseup = function(e) {
-    if (isSelecting && e.cell) {
-        selectionEnd = e.cell;
-        updateSelection();
-        isSelecting = false;
-        highlightDuplicates();
-    }
-}
-
-function forEachSelected(callback) {
-    var width = selectionEnd.col - selectionStart.col;
-    var height = selectionEnd.row - selectionStart.row;
-    var thickness = height - width;
-    for (var j = 0; j <= width; j++) {
-        for (var i = j; i <= j + thickness; i++) {
-            var cell = matrix.board[i + selectionStart.row][j + selectionStart.col];
-            if (!callback(cell)) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-function updateSelection() {
-    matrix.clearSelection();
-    forEachSelected(function(cell) {
-        cell.primarySelection = cell.type ? 1 : 2;
-        return true;
-    });
-}
-
-function isDuplicate(distance) {
-    return forEachSelected(function(originalCell) {
-        if (!originalCell.type)
-            return true;
-
-        var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
-        return originalCell.primarySelection !== 1 || parallelCell.type !== 0;
-    });
-}
-
-function highlightDuplicates() {
-    for (var col = 0; col < matrix.width; col++) {
-        var distance = col - selectionStart.col;
-        if (distance != 0 && isDuplicate(distance)) {
-            var width = Math.min(selectionEnd.col - selectionStart.col, matrix.width - col);
-            //applyMerge(selectionStart.col, (selectionStart.col + width), col);
-            var srcStart = selectionStart.col;
-            var srcEnd = selectionStart.col + width;
-            var dstStart = col;
-            var dstEnd = col + width;
-            console.log('C[' + dstStart + ':' + dstEnd + '] ^= C[' + srcStart + ':' + srcEnd + ']');
-
-            forEachSelected(function(originalCell) {
-                if (!originalCell.type || originalCell.col + distance >= matrix.width)
-                    return true;
-
-                var parallelCell = matrix.board[originalCell.row][originalCell.col + distance];
-                parallelCell.secondarySelection = originalCell.type ? 1 : 0;
-                return true;
-            });
-        }
-    }
-}
         </script>
 
 
@@ -256,8 +115,9 @@ function highlightDuplicates() {
         <script>
 function rangemap(n, fn) {
     var result = [];
+    var push = result.push.bind(result);
     for (var i = 0; i < n; i++) {
-        fn(i, result.push.bind(result));
+        fn(i, push);
     }
     return result;
 }
@@ -288,6 +148,9 @@ function runUserAlgorithm() {
         wa.xor = function(wb) {
             matrix.debug['word xors']++;
             return makeWordColumn(rangemap(wordSize, function(i, push) {
+                if (wa[i] === undefined) {
+                    console.log(wa, i)
+                }
                 push(wa[i].xor(wb[i]));
             }));
         }
@@ -322,7 +185,7 @@ function runUserAlgorithm() {
     }
     // Add empty columns to the last word to ensure size regularity.
     for (var i = matrix.width % 32; i < 32; i++) {
-        W[W.length-1].push([])
+        W[W.length-1].push(makeColumn([]))
     }
 
     var code = document.getElementById('user-algorithm').value;
@@ -365,16 +228,14 @@ function makeBitAlgorithm() {
     }
     document.getElementById('user-algorithm').value = code.join('\n');
 }
-function findCorrectRanges() {
+function findCorrectXorPairs() {
     var m = (matrix.width + 1) / 2;
-    var ranges = [];
 
     function isCorrect(row, col) {
         return row != col && col < m && row < matrix.height && col < matrix.width && matrix.board[row][col].isCorrect;
     }
 
-    var columns = [];
-    var pairsCount = {};
+    var columns = {};
     for (var blockCol = 0; blockCol < (matrix.width + 2) / 2; blockCol += 32) {
         for (var blockRow = 0; blockRow < matrix.height; blockRow += 32) {
 
@@ -390,51 +251,51 @@ function findCorrectRanges() {
                         if (!isCorrect(blockRow + subRow + 1, blockCol + subCol + 1) || t == 31) {
                             var isStartFull = startRange == 0 || startRange == -colStart;
                             var isEndFull = t == 31 || t == 31 - colStart || blockRow + subRow == matrix.height - 1;
-                            ranges.push({
+                            var line = {
                                 'blockCol': blockCol,
                                 'blockRow': blockRow,
                                 'colStart': colStart,
                                 'isFull': isStartFull && isEndFull,
                                 'range': [startRange, t+1],
-                            });
-
+                                'column': startColumn,
+                            };
                             var startColumn = blockCol + startRange + colStart;
                             if (columns[startColumn] === undefined) {
                                 columns[startColumn] = [];
                             }
-                            columns[startColumn].push({row: blockRow/32, colStart: colStart});
+                            columns[startColumn].push(line);
+                            line.column = columns[startColumn];
                         }
                     }
                 }
             }
         }
-        for (var startColumn = blockCol; startColumn < blockCol + 32; startColumn++) {
-            var columnLines = {};
-            var entries = columns[startColumn];
-            if (entries === undefined) continue;
-            var minColStart = Infinity;
-            for (var i = 0; i < entries.length; i++) {
-                minColStart = Math.min(minColStart, entries[i].colStart);
-            }
-            var xors = [];
-            for (var i = 0; i < entries.length; i++) {
-                var shift = entries[i].colStart - minColStart;
-                if (Math.abs(shift) >= 32) continue;
-                var line = [entries[i].row, shift];
-                for (var otherLine in columnLines) {
-                    var pair = [otherLine, line];
-                    if (pairsCount[pair] === undefined) {
-                        pairsCount[pair] = []
-                    }
-                    pairsCount[pair].push([startColumn, minColStart]);
+    }
+
+    var allPairs = {}
+    for (var colNumber in columns) {
+        var column = columns[colNumber]
+        var minColStart = Infinity;
+        for (var j = 0; j < column.length; j++) {
+            var line = column[j];
+            minColStart = Math.min(minColStart, line.colStart);
+        }
+        for (var j = 0; j < column.length; j++) {
+            column[j].minColStart = minColStart;
+            for (var k = 0; k < j; k++) {
+                var info = [column[k].blockRow/32, column[k].colStart-minColStart,
+                            column[j].blockRow/32, column[j].colStart-minColStart];
+                if (allPairs[info] === undefined) {
+                    allPairs[info] = [];
+                    // Save for later because JS dictionaries convert keys to strings.
+                    allPairs[info].info = info
                 }
-                columnLines[line] = (columnLines[pair] || 0) + 1;
+                allPairs[info].push([column[j], column[k]]);
             }
         }
     }
-    console.table(pairsCount);
 
-    return ranges;
+    return allPairs;
 }
 function repeatStr(str, n) {
     var result = '';
@@ -444,58 +305,17 @@ function repeatStr(str, n) {
     return result;
 }
 function makeWordAlgorithm() {
-    var code = []
-    var temporary = {};
-    function temp(exp, line) {
-        if (temporary[exp]) {
-            temporary[exp].push(line);
-        } else {
-            temporary[exp] = [line];
-        }
+    var code = [];
+    var allPairs = findCorrectXorPairs();
+    for (var key in allPairs) {
+        var a = allPairs[key][0][0];
+        var b = allPairs[key][0][1];
+        [a.blockRow/32, a.colStart-a.minColStart,
+                            b.blockRow/32, b.colStart-b.minColStart]
+        code.push('temp_' + key.replace(/,/g, '_') + ' = (W[' + a.blockRow/32 + ']<<' + (a.colStart-a.minColStart) + ') ^ ' + '(W[' + b.blockRow/32 + ']<<' + (b.colStart-b.minColStart) + ')');
     }
 
-    var ranges = findCorrectRanges();
-
-    for (var j = 0; j < ranges.length; j++) {
-        var r = ranges[j];
-        var prefix = 'W[' + (r.blockCol/32) + '] ^= ';
-        var suffix = 'W[' + (r.blockRow/32) + ']';
-
-        if (r.colStart) {
-            suffix += (r.colStart > 0 ? ' << ' : ' >> ') + Math.abs(r.colStart);
-            temp(suffix, code.length);
-        }
-
-        if (!r.isFull) {
-            var length = r.range[1] - r.range[0];
-            var mask = repeatStr('1', length) + repeatStr('0', r.range[0] + r.colStart);
-            suffix = '(' + suffix + ' & 0b' + mask + ')';
-            temp(suffix, code.length);
-        }
-
-        code.push(prefix + suffix);
-    }
-
-    var temporaryAssignments = [];
-    var count = 0;
-    for (var dup in temporary) {
-        var lines = temporary[dup];
-        if (lines.length === 1) {
-            continue;
-        }
-        temporaryAssignments.push('temp' + count + ' = ' + dup);
-
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i];
-            code[line] = code[line].replace(dup, 'temp' + count)
-        }
-        count++;
-    }
-    var m = (matrix.width + 1) / 2;
-    if (m % 32 != 0) {
-        code.push('W[' + ((m/32)|0) + '] &= 0b' + repeatStr('1', m%32));
-    }
-    document.getElementById('user-algorithm').value = temporaryAssignments.concat(code).join('\n');
+    document.getElementById('user-algorithm').value = code.join('\n');
 }
 makeWordAlgorithm();
         </script>
