@@ -278,15 +278,31 @@ function makeWordAlgorithm() {
 }
 makeWordAlgorithm();
 
+function roundToNearestCorrect(e) {
+    for (var t = 0; t < WORD_SIZE; t++) {
+        for (var m = -1; m <= 1; m += 2) {
+            var row = e.row + m * t;
+            var col = e.col;
+
+            if (matrix.isValid(row, col) && matrix.board[row][col].isCorrect && !matrix.board[row][col].isActive) {
+                e.row = row;
+                e.col = col;
+                return e;
+            }
+        }
+    }
+}
+
 matrix.onmousedown = function(e) {
-    if (!matrix.board[e.row][e.col].isCorrect) {
+    var e = roundToNearestCorrect(e);
+    if (!e) {
         return;
     }
 
     var startT = 0;
     for (var t = 0; t < WORD_SIZE && matrix.isValid(e.row-t, e.col-t); t++) {
         var cell = matrix.board[e.row-t][e.col-t];
-        if (cell.isCorrect) {
+        if (cell.isCorrect && !cell.isActive) {
             startT = t;
             cell.isActive = true;
         }
@@ -297,7 +313,7 @@ matrix.onmousedown = function(e) {
     var endT = 0;
     for (var t = 0; t < WORD_SIZE && matrix.isValid(e.row+t, e.col+t); t++) {
         var cell = matrix.board[e.row+t][e.col+t];
-        if (cell.isCorrect) {
+        if (cell.isCorrect && !cell.isActive) {
             endT = t;
             cell.isActive = true;
         }
@@ -322,10 +338,16 @@ matrix.onmousedown = function(e) {
     function maskOp(shift, start, end) {
         return ' & 0b' + repeatStr('1', end - start + 1) + repeatStr('0', start + shift);   
     }
-    var shift = (e.col%32)-(e.row%32);
-    var start = (e.row % 32) - startT;
-    var end = (e.row % 32) + endT
-    document.getElementById('user-algorithm').value += '\n' + 'W[' + Math.floor(e.col/32) + '] ^= W[' + Math.floor(e.row/32) + ']' + shiftOp(shift) + maskOp(shift, start, end);
+    var shift = (e.col%WORD_SIZE)-(e.row%WORD_SIZE);
+    var start = (e.row % WORD_SIZE) - startT;
+    var end = (e.row % WORD_SIZE) + endT;
+    var line = 'W[' + Math.floor(e.col/WORD_SIZE) + '] ^= W[' + Math.floor(e.row/WORD_SIZE) + ']' + shiftOp(shift) + maskOp(shift, start, end);
+    var code = document.getElementById('user-algorithm').value;
+    if (code === '') {
+        document.getElementById('user-algorithm').value = line;
+    } else {
+        document.getElementById('user-algorithm').value = code + '\n' + line;
+    }
     updateTypes();
     matrix.render();
 }
