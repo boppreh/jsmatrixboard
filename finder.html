@@ -63,8 +63,8 @@ function initMatrix() {
         cell.isActive = cell.row === cell.col;
         cell.isCorrect = cell.isActive;
         cell.background = cell.col % WORD_SIZE == 0 || cell.row % WORD_SIZE == 0 ? 1 : 0;
-    })
-;    updateIsCorrect();
+    });
+    updateIsCorrect();
     updateTypes();
 }
 
@@ -277,6 +277,58 @@ function makeWordAlgorithm() {
     document.getElementById('user-algorithm').value = code.join('\n');
 }
 makeWordAlgorithm();
+
+matrix.onmousedown = function(e) {
+    if (!matrix.board[e.row][e.col].isCorrect) {
+        return;
+    }
+
+    var startT = 0;
+    for (var t = 0; t < WORD_SIZE && matrix.isValid(e.row-t, e.col-t); t++) {
+        var cell = matrix.board[e.row-t][e.col-t];
+        if (cell.isCorrect) {
+            startT = t;
+            cell.isActive = true;
+        }
+        if ((e.row-t) % WORD_SIZE == 0 || (e.col-t) % WORD_SIZE == 0) {
+            break;
+        }
+    }
+    var endT = 0;
+    for (var t = 0; t < WORD_SIZE && matrix.isValid(e.row+t, e.col+t); t++) {
+        var cell = matrix.board[e.row+t][e.col+t];
+        if (cell.isCorrect) {
+            endT = t;
+            cell.isActive = true;
+        }
+        if ((e.row+t) % WORD_SIZE == WORD_SIZE - 1 || (e.col+t) % WORD_SIZE == WORD_SIZE - 1) {
+            break;
+        }
+    }
+    function shiftOp(amount) {
+        if (amount === 0) {
+            return ''
+        } else {
+            return (amount > 0 ? ' << ' : ' >> ') + Math.abs(amount);
+        }
+    }
+    function repeatStr(str, n) {
+        var result = '';
+        for (var i = 0; i < n; i++) {
+            result += str;
+        }
+        return result;
+    }
+    function maskOp(shift, start, end) {
+        return ' & 0b' + repeatStr('1', end - start + 1) + repeatStr('0', start + shift);   
+    }
+    var shift = (e.col%32)-(e.row%32);
+    var start = (e.row % 32) - startT;
+    var end = (e.row % 32) + endT
+    document.getElementById('user-algorithm').value += '\n' + 'W[' + Math.floor(e.col/32) + '] ^= W[' + Math.floor(e.row/32) + ']' + shiftOp(shift) + maskOp(shift, start, end);
+    updateTypes();
+    matrix.render();
+}
         </script>
     </body>
 </html>
